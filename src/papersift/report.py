@@ -121,7 +121,8 @@ def as_svg(f: Flow) -> str:
         ([f"Reports sought for retrieval (n = {f.sought})"],
          [f"Reports not retrieved (n = {f.not_retrieved})"]),
         ([f"Reports assessed for eligibility (n = {f.assessed})"],
-         [f"Reports excluded (n = {sum(f.excluded_fulltext.values())}):", *reasons]),
+         [f"Reports excluded (n = {sum(f.excluded_fulltext.values())})" + (":" if reasons else ""),
+          *reasons]),
         ([f"Studies included in review (n = {f.included})"], None),
     ]
     left, right = 20, 20 + BOX_W + GAP
