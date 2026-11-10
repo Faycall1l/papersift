@@ -1,4 +1,4 @@
-from papersift import agreement, export, report
+from papersift import agreement, export, extract, report
 from papersift.cli import main
 from papersift.dedupe import mark_duplicates, title_key
 from papersift.importers import read_bibtex, read_csv, read_ris
@@ -176,3 +176,21 @@ def test_near_duplicates(tmp_path):
     ])
     assert mark_duplicates(store) == 2
     assert [r.source for r in store.records()] == ["a", "d", "e"]
+
+
+def test_extraction_table(tmp_path):
+    main(["init", str(tmp_path), "--title", "T", "--question", "Q"])
+    protocol = load_protocol(tmp_path)
+    assert [f["name"] for f in protocol.extraction] == ["design", "sample_size"]
+    store = make_store(tmp_path, 2)
+    a, b = [r.id for r in store.records()]
+    for i in (a, b):
+        vote(store, i, "ana", INCLUDE)
+        vote(store, i, "ana", INCLUDE, FULLTEXT)
+    store.set_value(a, "design", "ai:m", "cohort", "We followed a cohort.")
+    store.set_value(a, "sample_size", "ai:m", "120")
+    store.set_value(a, "design", "ana", "RCT")
+    rows = extract.table(store, protocol).splitlines()
+    assert rows[0].endswith("design,sample_size,unchecked_ai_fields")
+    assert rows[1].endswith("RCT,120,sample_size")
+    assert rows[2].endswith(",,")

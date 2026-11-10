@@ -32,6 +32,13 @@ years:
   from: 2015
   to: {year}
 
+# What to record from each included study. Used by `papersift extract`.
+extraction:
+  - name: design
+    question: What was the study design?
+  - name: sample_size
+    question: How many participants were analysed?
+
 # One entry per database query.
 # Sources: openalex, pubmed, europepmc, arxiv, semanticscholar.
 # Each source has its own query syntax; see the README.
@@ -55,6 +62,7 @@ class Protocol:
     year_from: int | None = None
     year_to: int | None = None
     searches: list[dict] = field(default_factory=list)
+    extraction: list[dict] = field(default_factory=list)
 
 
 def find_root(start: Path | None = None) -> Path:
@@ -83,6 +91,11 @@ def load_protocol(root: Path) -> Protocol:
         year_from=years.get("from"),
         year_to=years.get("to"),
         searches=list(data.get("searches") or []),
+        extraction=[
+            {"name": str(f["name"]), "question": str(f.get("question") or f["name"]),
+             "choices": [str(c) for c in f.get("choices") or []]}
+            for f in data.get("extraction") or []
+        ],
     )
 
 

@@ -99,17 +99,14 @@ def _content(record: Record, stage: str, root: Path) -> list[dict] | None:
     ]
 
 
-def judge(api, model: str, system: str, stage: str, content: list[dict]) -> dict | None:
-    """One decision from the model, or None if it gave no usable answer."""
+def ask(api, model: str, system: str, content: list[dict], schema: dict, effort: str) -> dict | None:
+    """One structured answer from the model, or None if it gave no usable answer."""
     response = api.messages.create(
         model=model,
-        max_tokens=4000,
+        max_tokens=8000,
         system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": content}],
-        output_config={
-            "effort": "low" if stage == ABSTRACT else "medium",
-            "format": {"type": "json_schema", "schema": _schema(stage)},
-        },
+        output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
     )
     if response.stop_reason != "end_turn":
         return None
@@ -120,10 +117,25 @@ def judge(api, model: str, system: str, stage: str, content: list[dict]) -> dict
         return None
 
 
-def screen_all(store: Store, protocol: Protocol, stage: str,
-               model: str | None = None, limit: int | None = None) -> None:
+def _each(jobs: list, work):
+    """Run work(job) over a few threads, yielding (job, answer) with None on API errors."""
     import anthropic
 
+    def safe(job):
+        try:
+            return job, work(job)
+        except anthropic.APIError:
+            return job, None
+
+    with ThreadPoolExecutor(WORKERS) as pool:
+        for done, result in enumerate(pool.map(safe, jobs), 1):
+            yield result
+            if done % 25 == 0 or done == len(jobs):
+                print(f"  {done} of {len(jobs)}")
+
+
+def screen_all(store: Store, protocol: Protocol, stage: str,
+               model: str | None = None, limit: int | None = None) -> None:
     if not (protocol.include or protocol.exclude):
         raise ProjectError("The protocol has no criteria for the AI to apply.")
     model, root = model_name(model), find_root()
@@ -144,25 +156,16 @@ def screen_all(store: Store, protocol: Protocol, stage: str,
             jobs.append((record, content))
     print(f"Screening {len(jobs)} records as reviewer '{reviewer}'")
 
-    def work(job):
-        record, content = job
-        try:
-            return record, judge(api, model, system, stage, content), None
-        except anthropic.APIError as err:
-            return record, None, err
-
+    schema, effort = _schema(stage), "low" if stage == ABSTRACT else "medium"
     counts = {INCLUDE: 0, EXCLUDE: 0, MAYBE: 0}
     failed = 0
-    with ThreadPoolExecutor(WORKERS) as pool:
-        for done, (record, answer, error) in enumerate(pool.map(work, jobs), 1):
-            if answer is None:
-                failed += 1
-            else:
-                store.decide(Decision(record.id, stage, reviewer, answer["decision"],
-                                      answer["reason"] or None, answer["note"] or None))
-                counts[answer["decision"]] += 1
-            if done % 25 == 0 or done == len(jobs):
-                print(f"  {done} of {len(jobs)}")
+    for (record, _), answer in _each(jobs, lambda job: ask(api, model, system, job[1], schema, effort)):
+        if answer is None:
+            failed += 1
+            continue
+        store.decide(Decision(record.id, stage, reviewer, answer["decision"],
+                              answer["reason"] or None, answer["note"] or None))
+        counts[answer["decision"]] += 1
 
     print(f"Include {counts[INCLUDE]}, exclude {counts[EXCLUDE]}, maybe {counts[MAYBE]}")
     if failed:
@@ -172,3 +175,63 @@ def screen_all(store: Store, protocol: Protocol, stage: str,
               "or screen them yourself.")
     print("The AI counts as one reviewer. Screen the same records yourself, or check a "
           "sample, with `papersift screen --show-ai`, then `papersift agreement`.")
+
+
+EXTRACTION = (
+    "You are extracting data from a study included in a systematic review. Answer each "
+    "question from the document only. For each answer give the value, as short as it can "
+    "be while staying exact, and a quote: one sentence copied word for word from the "
+    "document that supports it. If the document does not report something, the value is "
+    '"not reported" and the quote is empty. Where a question lists choices, the value '
+    "must be one of them."
+)
+
+
+def extract_all(store: Store, protocol: Protocol, model: str | None = None,
+                limit: int | None = None) -> None:
+    from .export import included
+    from .extract import require_fields
+
+    require_fields(protocol)
+    model, root = model_name(model), find_root()
+    api = client(model)
+    reviewer = f"ai:{model}"
+    fields = protocol.extraction
+    values = store.values()
+    todo = [r for r in included(store)
+            if not all(any(row["reviewer"] == reviewer for row in values.get(r.id, {}).get(f["name"], []))
+                       for f in fields)][:limit]
+    if not todo:
+        print("Nothing left for the AI to extract.")
+        return
+
+    answer = {"type": "object", "properties": {"value": {"type": "string"}, "quote": {"type": "string"}},
+              "required": ["value", "quote"], "additionalProperties": False}
+    schema = {"type": "object", "properties": {f["name"]: answer for f in fields},
+              "required": [f["name"] for f in fields], "additionalProperties": False}
+    questions = "\n".join(
+        f"- {f['name']}: {f['question']}" + (f" Choices: {', '.join(f['choices'])}." if f["choices"] else "")
+        for f in fields)
+    system = f"{EXTRACTION}\n\nReview: {protocol.title}\n\nQuestions:\n{questions}"
+
+    jobs, abstract_only = [], 0
+    for record in todo:
+        content = _content(record, FULLTEXT, root)
+        if content is None:
+            abstract_only += 1
+            content = _content(record, ABSTRACT, root)
+        jobs.append((record, content))
+    print(f"Extracting from {len(jobs)} studies as '{reviewer}'")
+
+    failed = 0
+    for (record, _), result in _each(jobs, lambda job: ask(api, model, system, job[1], schema, "medium")):
+        if result is None:
+            failed += 1
+            continue
+        for name, item in result.items():
+            store.set_value(record.id, name, reviewer, item["value"], item["quote"] or None)
+    if abstract_only:
+        print(f"{abstract_only} had no PDF and were read from the abstract only.")
+    if failed:
+        print(f"{failed} got no answer. Run again to retry.")
+    print("Check the values with `papersift extract`; unchecked ones are flagged in the export.")

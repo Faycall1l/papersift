@@ -54,6 +54,21 @@ CREATE TABLE IF NOT EXISTS decisions (
     decided_at TEXT NOT NULL,
     PRIMARY KEY (record_id, stage, reviewer)
 );
+CREATE TABLE IF NOT EXISTS extractions (
+    record_id INTEGER NOT NULL REFERENCES records(id),
+    field TEXT NOT NULL,
+    reviewer TEXT NOT NULL,
+    value TEXT NOT NULL,
+    quote TEXT,
+    extracted_at TEXT NOT NULL,
+    PRIMARY KEY (record_id, field, reviewer)
+);
+CREATE TABLE IF NOT EXISTS links (
+    record_id INTEGER NOT NULL REFERENCES records(id),
+    system TEXT NOT NULL,
+    key TEXT NOT NULL,
+    PRIMARY KEY (record_id, system)
+);
 """
 
 
@@ -213,6 +228,29 @@ class Store:
             if any(d.reviewer in (reviewer, CONSENSUS) for d in ds)
         }
         return [r for r in self.eligible(stage) if r.id not in done]
+
+
+    def set_value(self, record_id: int, field: str, reviewer: str, value: str,
+                  quote: str | None = None) -> None:
+        self.db.execute("INSERT OR REPLACE INTO extractions VALUES (?,?,?,?,?,?)",
+                        (record_id, field, reviewer, value, quote, _now()))
+        self.db.commit()
+
+    def values(self) -> dict[int, dict[str, list[sqlite3.Row]]]:
+        """Extracted values as {record id: {field: [rows, oldest first]}}."""
+        rows = self.db.execute("SELECT * FROM extractions ORDER BY extracted_at").fetchall()
+        out: dict[int, dict[str, list[sqlite3.Row]]] = {}
+        for row in rows:
+            out.setdefault(row["record_id"], {}).setdefault(row["field"], []).append(row)
+        return out
+
+    def link(self, record_id: int, system: str, key: str) -> None:
+        self.db.execute("INSERT OR REPLACE INTO links VALUES (?,?,?)", (record_id, system, key))
+        self.db.commit()
+
+    def links(self, system: str) -> dict[int, str]:
+        rows = self.db.execute("SELECT record_id, key FROM links WHERE system = ?", (system,))
+        return {row["record_id"]: row["key"] for row in rows}
 
 
 def _record(row: sqlite3.Row) -> Record:

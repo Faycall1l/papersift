@@ -8,7 +8,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from . import __version__, agreement, export, report, screen
+from . import __version__, agreement, export, extract, report, screen
 from .dedupe import mark_duplicates
 from .importers import read_file
 from .project import DB_FILE, PROTOCOL_FILE, TEMPLATE, ProjectError, find_root, load_protocol
@@ -124,6 +124,21 @@ def cmd_screen(args) -> None:
     screen.run(store, protocol, stage_of(args), reviewer_of(args), show_ai=args.show_ai)
 
 
+def cmd_extract(args) -> None:
+    _, protocol, store = open_project()
+    if args.ai:
+        from .ai import extract_all
+        extract_all(store, protocol, model=args.model, limit=args.limit)
+    elif args.id:
+        if not (args.field and args.value):
+            raise ProjectError("Give --field and --value with --id.")
+        if args.field not in {f["name"] for f in protocol.extraction}:
+            raise ProjectError(f"No extraction field named '{args.field}' in {PROTOCOL_FILE}.")
+        store.set_value(args.id, args.field, reviewer_of(args), args.value)
+    else:
+        extract.run(store, protocol, reviewer_of(args))
+
+
 def cmd_resolve(args) -> None:
     _, protocol, store = open_project()
     screen.run(store, protocol, stage_of(args), CONSENSUS)
@@ -172,6 +187,12 @@ def cmd_report(args) -> None:
 
 def cmd_export(args) -> None:
     root, _, store = open_project()
+    if args.extraction:
+        protocol = load_protocol(root)
+        target = Path(args.output) if args.output else root / "extraction.csv"
+        target.write_text(extract.table(store, protocol))
+        print(f"Wrote {target}")
+        return
     if args.format == "csv":
         text = export.to_csv(store, only_included=not args.all)
     else:
@@ -299,6 +320,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, help="with --ai, screen at most this many records")
     p.add_argument("--model")
 
+    p = command("extract", cmd_extract, "Record data from each included study.")
+    p.add_argument("--ai", action="store_true", help="let AI fill in the fields from the PDFs")
+    p.add_argument("--reviewer", help="your name (default: your login name)")
+    p.add_argument("--limit", type=int, help="with --ai, at most this many studies")
+    p.add_argument("--model")
+    p.add_argument("--id", type=int, help="set one value without prompts")
+    p.add_argument("--field")
+    p.add_argument("--value")
+
     staged(command("resolve", cmd_resolve, "Settle records where reviewers disagree."), who=False)
     command("fetch", cmd_fetch, "Download open-access PDFs for the full-text stage.")
     command("report", cmd_report, "Write the PRISMA flow numbers and diagram.")
@@ -306,6 +336,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = command("export", cmd_export, "Export included studies.")
     p.add_argument("--format", choices=export.FORMATS, default="csv")
     p.add_argument("--all", action="store_true", help="export every record, not only included")
+    p.add_argument("--extraction", action="store_true", help="export the data extraction table")
     p.add_argument("--output")
 
     p = staged(command("agreement", cmd_agreement, "Compare two reviewers (Cohen's kappa)."), who=False)
