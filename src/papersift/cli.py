@@ -8,14 +8,14 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from . import __version__, agreement, export, extract, report, screen
+from . import __version__, agreement, export, extract, ops, report, screen
 from .dedupe import mark_duplicates
 from .importers import read_file
 from .project import DB_FILE, PROTOCOL_FILE, TEMPLATE, ProjectError, find_root, load_protocol
-from .sources import SourceError, get_source
+from .sources import SourceError
 from .sources.http import get as http_get
 from .store import (ABSTRACT, CONSENSUS, EXCLUDE, FULLTEXT, INCLUDE, MAYBE, UNAVAILABLE,
-                    Decision, Store)
+                    Store)
 
 
 def open_project():
@@ -48,26 +48,8 @@ def cmd_init(args) -> None:
 
 
 def cmd_search(args) -> None:
-    root, protocol, store = open_project()
-    if not protocol.searches:
-        raise ProjectError(f"No searches in {PROTOCOL_FILE}. Add one, or run `papersift plan`.")
-    already = {(s["source"], s["query"]) for s in store.searches()}
-    for entry in protocol.searches:
-        name, query = str(entry.get("source", "")), str(entry.get("query", ""))
-        if (name, query) in already and not args.again:
-            print(f"{name}: already run, skipping (use --again to rerun)")
-            continue
-        source = get_source(name)
-        limit = int(entry.get("max_results") or 2000)
-        total = source.count(query, protocol.year_from, protocol.year_to)
-        print(f"{name}: {total} records match")
-        if total > limit:
-            print(f"  only the first {limit} will be fetched; raise max_results or narrow the query")
-        records = list(source.search(query, protocol.year_from, protocol.year_to, limit))
-        added = store.add_records(records)
-        store.log_search(name, query, total, added)
-        print(f"  fetched {len(records)}, {added} new")
-    print(f"Duplicates marked: {mark_duplicates(store)}")
+    _, protocol, store = open_project()
+    ops.run_searches(store, protocol, args.again)
     print("Next: `papersift screen`")
 
 
@@ -291,14 +273,15 @@ def cmd_show(args) -> None:
 
 def cmd_decide(args) -> None:
     _, _, store = open_project()
-    stage = stage_of(args)
-    if args.id not in {r.id for r in store.eligible(stage)}:
-        raise ProjectError(f"Record {args.id} is not at the {stage} stage.")
-    if stage == FULLTEXT and args.decision == EXCLUDE and not args.reason:
-        raise ProjectError("Excluding at full text needs --reason.")
-    if {MAYBE: FULLTEXT, UNAVAILABLE: ABSTRACT}.get(args.decision) == stage:
-        raise ProjectError(f"'{args.decision}' is not a {stage} decision.")
-    store.decide(Decision(args.id, stage, reviewer_of(args), args.decision, args.reason, args.note))
+    ops.decide(store, args.id, stage_of(args), reviewer_of(args), args.decision, args.reason, args.note)
+
+
+def cmd_mcp(args) -> None:
+    from .mcp_server import build
+    if args.project:
+        os.environ["PAPERSIFT_PROJECT"] = args.project
+    find_root()
+    build().run()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -382,6 +365,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = staged(command("agreement", cmd_agreement, "Compare two reviewers (Cohen's kappa)."), who=False)
     p.add_argument("reviewers", nargs="*")
+
+    p = command("mcp", cmd_mcp, "Run as an MCP server so an AI assistant can work on the review.")
+    p.add_argument("--project", help="review folder (default: the current folder)")
 
     p = staged(command("list", cmd_list, "List records at a stage."))
     p.add_argument("--outcome", choices=["pending", "conflict", INCLUDE, EXCLUDE, UNAVAILABLE])

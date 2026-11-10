@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -66,7 +67,7 @@ class Protocol:
 
 
 def find_root(start: Path | None = None) -> Path:
-    here = (start or Path.cwd()).resolve()
+    here = Path(start or os.environ.get("PAPERSIFT_PROJECT") or Path.cwd()).expanduser().resolve()
     for folder in [here, *here.parents]:
         if (folder / PROTOCOL_FILE).exists():
             return folder
