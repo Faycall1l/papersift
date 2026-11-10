@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+import argparse
+import getpass
+import json
+import os
+import sys
+from datetime import date
+from pathlib import Path
+
+from . import __version__, agreement, export, report, screen
+from .dedupe import mark_duplicates
+from .importers import read_file
+from .project import DB_FILE, PROTOCOL_FILE, TEMPLATE, ProjectError, find_root, load_protocol
+from .sources import SourceError, get_source
+from .sources.http import get as http_get
+from .store import (ABSTRACT, CONSENSUS, EXCLUDE, FULLTEXT, INCLUDE, MAYBE, UNAVAILABLE,
+                    Decision, Store)
+
+
+def open_project():
+    root = find_root()
+    return root, load_protocol(root), Store(root / DB_FILE)
+
+
+def stage_of(args) -> str:
+    return FULLTEXT if args.fulltext else ABSTRACT
+
+
+def reviewer_of(args) -> str:
+    return args.reviewer or os.environ.get("PAPERSIFT_REVIEWER") or getpass.getuser()
+
+
+def cmd_init(args) -> None:
+    folder = Path(args.folder)
+    target = folder / PROTOCOL_FILE
+    if target.exists():
+        raise ProjectError(f"{target} already exists.")
+    title = args.title or input("Short title for the review > ").strip()
+    question = args.question or input("The question it answers > ").strip()
+    folder.mkdir(parents=True, exist_ok=True)
+    target.write_text(TEMPLATE.format(
+        title=json.dumps(title), question=json.dumps(question), year=date.today().year))
+    Store(folder / DB_FILE).close()
+    print(f"Created {target}")
+    print("Next: write your criteria and searches in that file, then run `papersift search`.")
+    print("With an Anthropic API key, `papersift plan` can draft the searches for you.")
+
+
+def cmd_search(args) -> None:
+    root, protocol, store = open_project()
+    if not protocol.searches:
+        raise ProjectError(f"No searches in {PROTOCOL_FILE}. Add one, or run `papersift plan`.")
+    already = {(s["source"], s["query"]) for s in store.searches()}
+    for entry in protocol.searches:
+        name, query = str(entry.get("source", "")), str(entry.get("query", ""))
+        if (name, query) in already and not args.again:
+            print(f"{name}: already run, skipping (use --again to rerun)")
+            continue
+        source = get_source(name)
+        limit = int(entry.get("max_results") or 2000)
+        total = source.count(query, protocol.year_from, protocol.year_to)
+        print(f"{name}: {total} records match")
+        if total > limit:
+            print(f"  only the first {limit} will be fetched; raise max_results or narrow the query")
+        records = list(source.search(query, protocol.year_from, protocol.year_to, limit))
+        added = store.add_records(records)
+        store.log_search(name, query, total, added)
+        print(f"  fetched {len(records)}, {added} new")
+    print(f"Duplicates marked: {mark_duplicates(store)}")
+    print("Next: `papersift screen`")
+
+
+def cmd_add(args) -> None:
+    _, _, store = open_project()
+    for name in args.files:
+        records = read_file(Path(name))
+        added = store.add_records(records)
+        store.log_search(f"file:{Path(name).name}", "", len(records), added)
+        print(f"{name}: {len(records)} records, {added} new")
+    print(f"Duplicates marked: {mark_duplicates(store)}")
+
+
+def cmd_status(args) -> None:
+    _, protocol, store = open_project()
+    print(report.as_text(report.flow(store), protocol.title))
+
+
+def cmd_screen(args) -> None:
+    _, protocol, store = open_project()
+    if args.ai:
+        from .ai import screen_all
+        screen_all(store, protocol, stage_of(args), model=args.model, limit=args.limit)
+        return
+    screen.run(store, protocol, stage_of(args), reviewer_of(args), show_ai=args.show_ai)
+
+
+def cmd_resolve(args) -> None:
+    _, protocol, store = open_project()
+    screen.run(store, protocol, stage_of(args), CONSENSUS)
+
+
+def cmd_plan(args) -> None:
+    root, protocol, _ = open_project()
+    from .planner import plan
+    plan(root, protocol, model=args.model, known=args.known or [])
+
+
+def cmd_fetch(args) -> None:
+    root, _, store = open_project()
+    folder = root / "fulltext"
+    folder.mkdir(exist_ok=True)
+    got = missing = 0
+    for record in store.eligible(FULLTEXT):
+        path = folder / f"{record.id}.pdf"
+        if not path.exists():
+            try:
+                data = http_get(record.pdf_url, tries=2) if record.pdf_url else b""
+            except SourceError:
+                data = b""
+            if not data.startswith(b"%PDF"):
+                missing += 1
+                continue
+            path.write_bytes(data)
+            got += 1
+        relative = str(path.relative_to(root))
+        if record.pdf_path != relative:
+            store.update_record(record.id, pdf_path=relative)
+    print(f"Downloaded {got} open-access PDFs into {folder}")
+    if missing:
+        print(f"{missing} could not be downloaded. Save them yourself as fulltext/<id>.pdf "
+              "(`papersift list --fulltext` shows the ids), then run `papersift fetch` again.")
+
+
+def cmd_report(args) -> None:
+    root, protocol, store = open_project()
+    f = report.flow(store)
+    (root / "prisma.md").write_text(report.as_text(f, protocol.title))
+    (root / "prisma.svg").write_text(report.as_svg(f))
+    print(report.as_text(f, protocol.title))
+    print(f"Wrote {root / 'prisma.md'} and {root / 'prisma.svg'}")
+
+
+def cmd_export(args) -> None:
+    root, _, store = open_project()
+    if args.format == "csv":
+        text = export.to_csv(store, only_included=not args.all)
+    else:
+        records = store.records() if args.all else export.included(store)
+        text = export.to_ris(records) if args.format == "ris" else export.to_bibtex(records)
+    name = ("records" if args.all else "included") + "." + args.format
+    target = Path(args.output) if args.output else root / name
+    target.write_text(text)
+    print(f"Wrote {target}")
+
+
+def cmd_agreement(args) -> None:
+    _, _, store = open_project()
+    stage = stage_of(args)
+    names = args.reviewers or agreement.reviewers(store, stage)
+    if len(names) != 2:
+        raise ProjectError(f"Name two reviewers to compare. Reviewers at this stage: "
+                           f"{', '.join(agreement.reviewers(store, stage)) or 'none'}")
+    result = agreement.compare(store, stage, *names)
+    print(f"{names[0]} and {names[1]}, {stage} stage")
+    print(f"Records both decided: {result['both']}")
+    if result["both"]:
+        print(f"Agreed on: {result['agreed']} ({result['agreed'] / result['both']:.0%})")
+        kappa = result["kappa"]
+        print("Cohen's kappa: " + ("undefined (no variation)" if kappa is None else f"{kappa:.2f}"))
+        for (a, b), n in sorted(result["table"].items()):
+            print(f"  {names[0]} {a} / {names[1]} {b}: {n}")
+
+
+def cmd_list(args) -> None:
+    _, _, store = open_project()
+    stage = stage_of(args)
+    outcomes = store.outcomes(stage)
+    if args.todo:
+        records = store.todo(stage, reviewer_of(args))
+    else:
+        records = [r for r in store.eligible(stage) if args.outcome in (None, outcomes[r.id])]
+    records = records[:args.limit] if args.limit else records
+    if args.json:
+        print(json.dumps([
+            {"id": r.id, "title": r.title, "abstract": r.abstract, "year": r.year,
+             "venue": r.venue, "doi": r.doi, "pdf_path": r.pdf_path, "outcome": outcomes[r.id]}
+            for r in records
+        ], indent=1))
+        return
+    for r in records:
+        print(f"{r.id:>6}  {outcomes[r.id]:<11} {r.year or '':<5} {r.title[:90]}")
+
+
+def cmd_show(args) -> None:
+    _, _, store = open_project()
+    record = store.record(args.id)
+    if not record:
+        raise ProjectError(f"No record with id {args.id}.")
+    screen.show(record, f"id {record.id}")
+    for stage in (ABSTRACT, FULLTEXT):
+        votes = store.decisions(stage).get(record.id)
+        if votes:
+            print(f"{stage}:")
+            screen.show_votes(votes)
+
+
+def cmd_decide(args) -> None:
+    _, _, store = open_project()
+    stage = stage_of(args)
+    if args.id not in {r.id for r in store.eligible(stage)}:
+        raise ProjectError(f"Record {args.id} is not at the {stage} stage.")
+    if stage == FULLTEXT and args.decision == EXCLUDE and not args.reason:
+        raise ProjectError("Excluding at full text needs --reason.")
+    if {MAYBE: FULLTEXT, UNAVAILABLE: ABSTRACT}.get(args.decision) == stage:
+        raise ProjectError(f"'{args.decision}' is not a {stage} decision.")
+    store.decide(Decision(args.id, stage, reviewer_of(args), args.decision, args.reason, args.note))
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="papersift",
+        description="Find and screen papers for a systematic review.",
+        epilog="Usual order: init, search, screen, screen --fulltext, report, export.",
+    )
+    parser.add_argument("--version", action="version", version=__version__)
+    sub = parser.add_subparsers(dest="command", metavar="command")
+
+    def command(name, func, help):
+        p = sub.add_parser(name, help=help, description=help)
+        p.set_defaults(func=func)
+        return p
+
+    def staged(p, who=True):
+        p.add_argument("--fulltext", action="store_true", help="work on the full-text stage")
+        if who:
+            p.add_argument("--reviewer", help="your name (default: your login name)")
+        return p
+
+    p = command("init", cmd_init, "Start a review in a folder.")
+    p.add_argument("folder", nargs="?", default=".")
+    p.add_argument("--title")
+    p.add_argument("--question")
+
+    p = command("plan", cmd_plan, "Draft database searches with AI and test them.")
+    p.add_argument("--known", nargs="*", metavar="TITLE",
+                   help="titles of papers the search must find")
+    p.add_argument("--model")
+
+    p = command("search", cmd_search, "Run the searches in protocol.yaml.")
+    p.add_argument("--again", action="store_true", help="rerun searches already run")
+
+    p = command("add", cmd_add, "Add records from RIS, BibTeX or CSV files.")
+    p.add_argument("files", nargs="+")
+
+    command("status", cmd_status, "Show where the review stands.")
+
+    p = staged(command("screen", cmd_screen, "Screen records one at a time."))
+    p.add_argument("--ai", action="store_true", help="let AI screen as one more reviewer")
+    p.add_argument("--show-ai", action="store_true", help="show the AI's decision while you screen")
+    p.add_argument("--limit", type=int, help="with --ai, screen at most this many records")
+    p.add_argument("--model")
+
+    staged(command("resolve", cmd_resolve, "Settle records where reviewers disagree."), who=False)
+    command("fetch", cmd_fetch, "Download open-access PDFs for the full-text stage.")
+    command("report", cmd_report, "Write the PRISMA flow numbers and diagram.")
+
+    p = command("export", cmd_export, "Export included studies.")
+    p.add_argument("--format", choices=export.FORMATS, default="csv")
+    p.add_argument("--all", action="store_true", help="export every record, not only included")
+    p.add_argument("--output")
+
+    p = staged(command("agreement", cmd_agreement, "Compare two reviewers (Cohen's kappa)."), who=False)
+    p.add_argument("reviewers", nargs="*")
+
+    p = staged(command("list", cmd_list, "List records at a stage."))
+    p.add_argument("--outcome", choices=["pending", "conflict", INCLUDE, EXCLUDE, UNAVAILABLE])
+    p.add_argument("--todo", action="store_true", help="only records this reviewer has not decided")
+    p.add_argument("--limit", type=int)
+    p.add_argument("--json", action="store_true")
+
+    p = command("show", cmd_show, "Show one record and its decisions.")
+    p.add_argument("id", type=int)
+
+    p = staged(command("decide", cmd_decide, "Record a decision without the interactive screen."))
+    p.add_argument("id", type=int)
+    p.add_argument("decision", choices=[INCLUDE, EXCLUDE, MAYBE, UNAVAILABLE])
+    p.add_argument("--reason")
+    p.add_argument("--note")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if not args.command:
+        parser.print_help()
+        return 0
+    try:
+        args.func(args)
+    except (ProjectError, SourceError, ValueError) as err:
+        print(f"papersift: {err}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print()
+        return 130
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

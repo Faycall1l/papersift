@@ -70,7 +70,7 @@ class Record:
     url: str | None = None
     pdf_url: str | None = None
     pdf_path: str | None = None
-    id: int | None = None
+    id: int = 0
     duplicate_of: int | None = None
 
 
