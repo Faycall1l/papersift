@@ -206,6 +206,22 @@ specificity, precision, and which records it missed.
 `papersift report` states how many decisions were made by AI with no human
 reviewer, so you can report it.
 
+### Other models
+
+Abstract screening and extraction also work with any server that speaks the
+OpenAI chat-completions protocol: hosted open models, or a local one through
+Ollama or similar.
+
+```
+export PAPERSIFT_API_BASE=http://localhost:11434/v1
+export PAPERSIFT_MODEL=gemma3
+export PAPERSIFT_API_KEY=...      # if the server needs one
+papersift screen --ai
+```
+
+These models read text only: full-text screening of PDFs and `papersift
+plan` need the Anthropic API, and extraction falls back to the abstract.
+
 The default model is `claude-opus-5-5`. Choose another with `--model` or
 `PAPERSIFT_MODEL`; a smaller model costs much less on large screens. Titles,
 abstracts and PDFs are sent to the Anthropic API.
