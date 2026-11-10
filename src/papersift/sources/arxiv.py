@@ -38,6 +38,10 @@ def count(query: str, year_from: int | None = None, year_to: int | None = None) 
     return int(_fetch(_query(query, year_from, year_to), 0, 1).findtext(TOTAL) or 0)
 
 
+def with_title(query: str, title: str) -> str:
+    return f'({query}) AND ti:"{title}"'
+
+
 def search(query: str, year_from: int | None = None, year_to: int | None = None,
            limit: int = 2000) -> Iterator[Record]:
     full = _query(query, year_from, year_to)

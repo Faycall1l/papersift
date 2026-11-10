@@ -31,6 +31,10 @@ def count(query: str, year_from: int | None = None, year_to: int | None = None) 
     return json.loads(get(URL, params))["meta"]["count"]
 
 
+def with_title(query: str, title: str) -> str:
+    return f'({query}) AND "{title}"'
+
+
 def search(query: str, year_from: int | None = None, year_to: int | None = None,
            limit: int = 2000) -> Iterator[Record]:
     params = {**_params(query, year_from, year_to), "per-page": 200, "select": FIELDS, "cursor": "*"}

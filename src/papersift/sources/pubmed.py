@@ -34,6 +34,10 @@ def count(query: str, year_from: int | None = None, year_to: int | None = None) 
     return int(_esearch(query, year_from, year_to, 0)["count"])
 
 
+def with_title(query: str, title: str) -> str:
+    return f'({query}) AND "{title}"[ti]'
+
+
 def search(query: str, year_from: int | None = None, year_to: int | None = None,
            limit: int = 2000) -> Iterator[Record]:
     ids = _esearch(query, year_from, year_to, min(limit, MAX_IDS))["idlist"]
