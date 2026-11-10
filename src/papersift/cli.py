@@ -220,9 +220,36 @@ def cmd_export(args) -> None:
     print(f"Wrote {target}")
 
 
+def _print_accuracy(r: dict, reviewer: str, reference: str, stage: str) -> None:
+    def pct(value):
+        return "n/a" if value is None else f"{value:.1%}"
+
+    print(f"{reviewer} scored against {reference}, {stage} stage, {r['both']} records")
+    print(f"  {reference} included {r['kept'] + r['missed']}: "
+          f"{reviewer} passed {r['kept']}, excluded {r['missed']}")
+    print(f"  {reference} excluded {r['dropped'] + r['extra']}: "
+          f"{reviewer} excluded {r['dropped']}, passed {r['extra']}")
+    print(f"Recall: {pct(r['recall'])}")
+    print(f"Specificity: {pct(r['specificity'])}")
+    print(f"Precision: {pct(r['precision'])}")
+    print(f"Records {reviewer} would remove from the pile: {pct(r['work_saved'])}")
+    if r["final_includes"]:
+        lost = len(r["final_missed_ids"])
+        print(f"Studies {reference} included at full text: {r['final_includes']}, "
+              f"of which {reviewer} excluded {lost}")
+    if r["missed_ids"]:
+        print("Missed record ids: " + ", ".join(str(i) for i in r["missed_ids"]))
+
+
 def cmd_agreement(args) -> None:
     _, _, store = open_project()
     stage = stage_of(args)
+    if args.reference:
+        if len(args.reviewers) != 1:
+            raise ProjectError("Name the one reviewer to score against the reference.")
+        _print_accuracy(agreement.against(store, stage, args.reviewers[0], args.reference),
+                        args.reviewers[0], args.reference, stage)
+        return
     names = args.reviewers or agreement.reviewers(store, stage)
     if len(names) != 2:
         raise ProjectError(f"Name two reviewers to compare. Reviewers at this stage: "
@@ -365,6 +392,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = staged(command("agreement", cmd_agreement, "Compare two reviewers (Cohen's kappa)."), who=False)
     p.add_argument("reviewers", nargs="*")
+    p.add_argument("--reference", metavar="NAME",
+                   help="score one reviewer against this one: recall, specificity, precision")
 
     p = command("mcp", cmd_mcp, "Run as an MCP server so an AI assistant can work on the review.")
     p.add_argument("--project", help="review folder (default: the current folder)")

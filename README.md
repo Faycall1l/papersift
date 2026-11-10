@@ -194,6 +194,15 @@ papersift screen --reviewer ana --show-ai
 papersift agreement ana ai:claude-opus-5-5
 ```
 
+To measure the AI on records a person has already screened:
+
+```
+papersift agreement ai:claude-opus-5-5 --reference ana
+```
+
+This reports recall (how many of ana's includes the AI passed on),
+specificity, precision, and which records it missed.
+
 `papersift report` states how many decisions were made by AI with no human
 reviewer, so you can report it.
 

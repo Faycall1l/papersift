@@ -210,3 +210,20 @@ def test_zotero_mapping():
     assert tags(["no full text"], FULLTEXT) == (UNAVAILABLE, None)
     assert tags(["maybe"], FULLTEXT) is None
     assert tags(["include", "exclude"], ABSTRACT) is None
+
+
+def test_accuracy_against_reference(tmp_path):
+    store = make_store(tmp_path, 6)
+    ids = [r.id for r in store.records()]
+    gold = [INCLUDE, INCLUDE, INCLUDE, EXCLUDE, EXCLUDE, EXCLUDE]
+    ai = [INCLUDE, MAYBE, EXCLUDE, EXCLUDE, EXCLUDE, INCLUDE]
+    for i, g, a in zip(ids, gold, ai):
+        vote(store, i, "gold", g)
+        vote(store, i, "ai", a)
+    vote(store, ids[0], "gold", INCLUDE, FULLTEXT)
+    vote(store, ids[2], "gold", INCLUDE, FULLTEXT)
+    r = agreement.against(store, ABSTRACT, "ai", "gold")
+    assert (r["kept"], r["missed"], r["extra"], r["dropped"]) == (2, 1, 1, 2)
+    assert round(r["recall"], 3) == 0.667 and round(r["specificity"], 3) == 0.667
+    assert r["missed_ids"] == [ids[2]] and r["final_missed_ids"] == [ids[2]]
+    assert r["final_includes"] == 2 and r["work_saved"] == 0.5
