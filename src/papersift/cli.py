@@ -176,6 +176,40 @@ def cmd_fetch(args) -> None:
               "(`papersift list --fulltext` shows the ids), then run `papersift fetch` again.")
 
 
+def cmd_zotero(args) -> None:
+    from . import zotero
+    root, protocol, store = open_project()
+    library = zotero.Library(args.group)
+    stage = stage_of(args)
+    if args.action == "push":
+        outcomes = store.outcomes(ABSTRACT)
+        records = {
+            "included": lambda: export.included(store),
+            "fulltext": lambda: store.eligible(FULLTEXT),
+            "to-screen": lambda: [r for r in store.records() if outcomes[r.id] in ("pending", "conflict")],
+        }[args.what]()
+        name = args.collection or f"{protocol.title or 'papersift'}: {args.what}"
+        result = zotero.push(store, library, records, name)
+        print(f"Collection '{name}': {result['created']} items created, "
+              f"{result['already']} already in Zotero")
+        if result["refused"]:
+            print(f"Zotero refused {result['refused']} items.")
+    elif args.action == "pull":
+        result = zotero.pull(store, library, args.collection)
+        print(f"{result['found']} new items in Zotero, {result['added']} records added")
+        print(f"Duplicates marked: {mark_duplicates(store)}")
+    elif args.action == "decisions":
+        if not args.collection:
+            raise ProjectError("Name the collection you tagged with --collection.")
+        result = zotero.read_decisions(store, library, args.collection, stage, reviewer_of(args))
+        print(f"Recorded {result['recorded']} {stage} decisions from tags")
+        if result["unclear"]:
+            print(f"{result['unclear']} items have conflicting tags, or an exclude tag with no "
+                  "reason at full text (use `exclude: reason`), and were skipped.")
+    elif args.action == "pdfs":
+        print(f"Copied {zotero.fetch_pdfs(store, library, root)} PDFs from Zotero into fulltext/")
+
+
 def cmd_report(args) -> None:
     root, protocol, store = open_project()
     f = report.flow(store)
@@ -330,6 +364,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--value")
 
     staged(command("resolve", cmd_resolve, "Settle records where reviewers disagree."), who=False)
+    p = staged(command("zotero", cmd_zotero, "Exchange records, decisions and PDFs with Zotero."))
+    p.add_argument("action", choices=["push", "pull", "decisions", "pdfs"])
+    p.add_argument("--what", choices=["included", "fulltext", "to-screen"], default="included",
+                   help="which records to push (default: included)")
+    p.add_argument("--collection", help="Zotero collection name")
+    p.add_argument("--group", help="id of a Zotero group library (default: your own library)")
+
     command("fetch", cmd_fetch, "Download open-access PDFs for the full-text stage.")
     command("report", cmd_report, "Write the PRISMA flow numbers and diagram.")
 

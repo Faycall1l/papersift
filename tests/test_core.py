@@ -194,3 +194,19 @@ def test_extraction_table(tmp_path):
     assert rows[0].endswith("design,sample_size,unchecked_ai_fields")
     assert rows[1].endswith("RCT,120,sample_size")
     assert rows[2].endswith(",,")
+
+
+def test_zotero_mapping():
+    from papersift import zotero
+    record = Record(source="a", title="T", authors=["Doe, Jane", "Roe Lab"], year=2020, doi="10.1/x")
+    item = zotero.to_item(record, "COLL")
+    assert item["creators"][0] == {"creatorType": "author", "lastName": "Doe", "firstName": "Jane"}
+    assert item["creators"][1] == {"creatorType": "author", "name": "Roe Lab"}
+    back = zotero.from_item({"key": "K1", "data": {**item, "date": "March 2020"}})
+    assert (back.source_id, back.authors, back.year, back.doi) == ("K1", ["Doe, Jane", "Roe Lab"], 2020, "10.1/x")
+    tags = zotero.decision_from_tags
+    assert tags(["Include", "to read"], ABSTRACT) == (INCLUDE, None)
+    assert tags(["exclude: Wrong design"], FULLTEXT) == (EXCLUDE, "Wrong design")
+    assert tags(["no full text"], FULLTEXT) == (UNAVAILABLE, None)
+    assert tags(["maybe"], FULLTEXT) is None
+    assert tags(["include", "exclude"], ABSTRACT) is None
