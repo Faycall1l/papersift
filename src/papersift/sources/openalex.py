@@ -35,24 +35,31 @@ def with_title(query: str, title: str) -> str:
     return f'({query}) AND "{title}"'
 
 
-def search(query: str, year_from: int | None = None, year_to: int | None = None,
-           limit: int = 2000) -> Iterator[Record]:
-    params = {**_params(query, year_from, year_to), "per-page": 200, "select": FIELDS, "cursor": "*"}
+def works(filters: str, limit: int, select: str = FIELDS) -> Iterator[dict]:
+    """Every work matching an OpenAlex filter string, up to a limit."""
+    params = {"filter": filters, "per-page": 200, "select": select, "cursor": "*",
+              "api_key": os.environ.get("OPENALEX_API_KEY")}
     fetched = 0
     while params["cursor"] and fetched < limit:
         page = json.loads(get(URL, params))
         for work in page["results"]:
             if fetched >= limit:
-                break
+                return
             fetched += 1
-            yield _record(work)
+            yield work
         params["cursor"] = page["meta"].get("next_cursor") if page["results"] else None
 
 
-def _record(work: dict) -> Record:
+def search(query: str, year_from: int | None = None, year_to: int | None = None,
+           limit: int = 2000) -> Iterator[Record]:
+    filters = _params(query, year_from, year_to)["filter"]
+    return (to_record(work) for work in works(filters, limit))
+
+
+def to_record(work: dict, source: str = "openalex") -> Record:
     location = work.get("primary_location") or {}
     return Record(
-        source="openalex",
+        source=source,
         source_id=work["id"].rsplit("/", 1)[-1],
         doi=work.get("doi"),
         title=work.get("title") or "",

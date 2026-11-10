@@ -32,7 +32,8 @@ years:
   from: 2015
   to: {year}
 
-# One entry per database query. Sources: openalex, pubmed, arxiv.
+# One entry per database query.
+# Sources: openalex, pubmed, europepmc, arxiv, semanticscholar.
 # Each source has its own query syntax; see the README.
 searches:
   - source: openalex

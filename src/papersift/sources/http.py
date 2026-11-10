@@ -13,11 +13,14 @@ class SourceError(Exception):
     pass
 
 
-def get(url: str, params: dict | None = None, tries: int = 4) -> bytes:
+def get(url: str, params: dict | None = None, tries: int = 4, headers: dict | None = None,
+        data: bytes | None = None, method: str | None = None) -> bytes:
     if params:
         clean = {k: v for k, v in params.items() if v is not None}
         url += "?" + urllib.parse.urlencode(clean)
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    host = urllib.parse.urlsplit(url).netloc
+    request = urllib.request.Request(
+        url, data=data, method=method, headers={"User-Agent": USER_AGENT, **(headers or {})})
     for attempt in range(tries):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -25,9 +28,9 @@ def get(url: str, params: dict | None = None, tries: int = 4) -> bytes:
         except urllib.error.HTTPError as err:
             if err.code not in RETRY_ON or attempt == tries - 1:
                 detail = err.read().decode("utf-8", "replace")[:300]
-                raise SourceError(f"{err.code} from {urllib.parse.urlsplit(url).netloc}: {detail}") from err
+                raise SourceError(f"{err.code} from {host}: {detail}") from err
         except (urllib.error.URLError, TimeoutError) as err:
             if attempt == tries - 1:
-                raise SourceError(f"Could not reach {urllib.parse.urlsplit(url).netloc}: {err}") from err
+                raise SourceError(f"Could not reach {host}: {err}") from err
         time.sleep(2 ** attempt * 2)
-    raise SourceError("unreachable")
+    raise SourceError(f"Could not reach {host}")

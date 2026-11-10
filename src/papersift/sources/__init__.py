@@ -1,7 +1,13 @@
-from . import arxiv, openalex, pubmed
+from . import arxiv, europepmc, openalex, pubmed, semanticscholar
 from .http import SourceError
 
-SOURCES = {"openalex": openalex, "pubmed": pubmed, "arxiv": arxiv}
+SOURCES = {
+    "openalex": openalex,
+    "pubmed": pubmed,
+    "europepmc": europepmc,
+    "arxiv": arxiv,
+    "semanticscholar": semanticscholar,
+}
 
 
 def get_source(name: str):
