@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.svg" alt="papersift" width="420"></p>
+<p align="center"><img src="docs/logo.svg" alt="papersift" width="460"></p>
 
 papersift finds and screens papers for a systematic review and keeps the
 counts a PRISMA 2020 flow diagram needs. It searches OpenAlex, PubMed,
