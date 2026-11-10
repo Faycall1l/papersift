@@ -81,6 +81,35 @@ def cmd_add(args) -> None:
     print(f"Duplicates marked: {mark_duplicates(store)}")
 
 
+def cmd_chase(args) -> None:
+    from .chase import chase
+    _, _, store = open_project()
+    seeds = export.included(store)
+    if args.from_abstract:
+        seeds = store.eligible(FULLTEXT)
+    if not seeds:
+        raise ProjectError("No included studies to start from. Screen first, "
+                           "or use --from-abstract to start from the abstract-stage includes.")
+    both = not (args.backward or args.forward)
+    result = chase(store, seeds, backward=both or args.backward, forward=both or args.forward)
+    print(f"Started from {result['seeds']} studies ({result['unresolved']} not found in OpenAlex)")
+    print(f"Found {result['found']} citing or cited records, {result['added']} new")
+    print(f"Duplicates marked: {mark_duplicates(store)}")
+    print("New records are waiting in `papersift screen`.")
+
+
+def cmd_duplicates(args) -> None:
+    _, _, store = open_project()
+    if args.keep:
+        store.update_record(args.keep, duplicate_of=None)
+        print(f"Record {args.keep} is no longer treated as a duplicate.")
+        return
+    for r in store.records(include_duplicates=True):
+        if r.duplicate_of:
+            original = store.record(r.duplicate_of)
+            print(f"{r.id:>6}  {r.title[:90]}\n  same as {original.id}: {original.title[:80]}")
+
+
 def cmd_status(args) -> None:
     _, protocol, store = open_project()
     print(report.as_text(report.flow(store), protocol.title))
@@ -252,6 +281,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = command("add", cmd_add, "Add records from RIS, BibTeX or CSV files.")
     p.add_argument("files", nargs="+")
+
+    p = command("chase", cmd_chase, "Add the references of included studies and the papers citing them.")
+    p.add_argument("--backward", action="store_true", help="only their references")
+    p.add_argument("--forward", action="store_true", help="only papers citing them")
+    p.add_argument("--from-abstract", action="store_true",
+                   help="start from records included at the abstract stage")
+
+    p = command("duplicates", cmd_duplicates, "List records removed as duplicates.")
+    p.add_argument("--keep", type=int, metavar="ID", help="restore a record wrongly removed")
 
     command("status", cmd_status, "Show where the review stands.")
 
