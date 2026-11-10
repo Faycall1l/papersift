@@ -1,12 +1,14 @@
 <p align="center"><img src="docs/logo.svg" alt="papersift" width="420"></p>
 
 papersift finds and screens papers for a systematic review and keeps the
-counts a PRISMA 2020 flow diagram needs. It searches OpenAlex, PubMed and
-arXiv, reads exports from other databases, removes duplicates, walks you
-through title/abstract and full-text screening, and writes the flow diagram.
+counts a PRISMA 2020 flow diagram needs. It searches OpenAlex, PubMed,
+Europe PMC, arXiv and Semantic Scholar, reads exports from other databases,
+removes duplicates, follows citations, walks you through title/abstract and
+full-text screening and data extraction, and writes the flow diagram.
 
 Everything works without AI. With an Anthropic API key, an AI can draft and
-test your searches and act as an extra reviewer.
+test your searches, act as an extra reviewer and pre-fill the extraction
+table. It also works with Zotero and, through MCP, with AI assistants.
 
 ## Install
 
@@ -21,6 +23,9 @@ For the AI features:
 ```
 pip install "papersift[ai] @ git+https://github.com/Faycall1l/papersift"
 ```
+
+Use `[mcp]` in place of `[ai]` for the MCP server (Python 3.10 or newer),
+or `[ai,mcp]` for both.
 
 ## A review, start to finish
 
@@ -65,12 +70,17 @@ Then:
 | Screen titles and abstracts | `papersift screen` |
 | Download open-access PDFs | `papersift fetch` |
 | Screen full texts | `papersift screen --fulltext` |
+| Add references and citing papers of the included studies | `papersift chase` |
+| Record data from each included study | `papersift extract` |
 | See where things stand | `papersift status` |
 | Write `prisma.md` and `prisma.svg` | `papersift report` |
 | Export the included studies | `papersift export --format csv` (or `ris`, `bib`) |
 
-Duplicates are removed automatically after every search and import, by DOI
-and by title. Screening can be stopped and resumed at any time.
+Duplicates are removed automatically after every search and import: records
+with the same DOI or title, and records with the same first author and a
+near-identical title or abstract (a preprint and its journal version).
+`papersift duplicates` lists what was removed and `--keep ID` restores one.
+Screening can be stopped and resumed at any time.
 
 ## Writing searches
 
@@ -80,7 +90,9 @@ Each database has its own query language.
 | --- | --- | --- |
 | `openalex` | All fields | `AND`, `OR`, `NOT`, `"exact phrase"`, parentheses. Matches title and abstract. |
 | `pubmed` | Biomedicine | The same as on the PubMed website: `term[tiab]`, `"Term"[Mesh]`, etc. |
+| `europepmc` | Life sciences, with preprints | As on europepmc.org: `AND`, `OR`, `NOT`, `TITLE:"..."`, `ABSTRACT:"..."`. |
 | `arxiv` | Physics, maths, computer science preprints | Field prefixes: `ti:"..."`, `abs:"..."`, joined with `AND`, `OR`, `ANDNOT`. |
+| `semanticscholar` | All fields, strong in computer science | `+` for AND, `\|` for OR, `-` for NOT, `"exact phrase"`, parentheses. |
 
 Each search fetches at most 2000 records unless you set `max_results`.
 
@@ -90,6 +102,40 @@ For any other database, export your results as RIS, BibTeX or CSV and use
 OpenAlex allows a small number of requests per day without a key. For a
 large search, get a free key at openalex.org/settings/api and set
 `OPENALEX_API_KEY`. `NCBI_API_KEY` is optional and speeds up PubMed.
+Semantic Scholar is often rate limited without `S2_API_KEY`.
+
+## Citation chasing
+
+```
+papersift chase
+```
+
+Looks up each included study in OpenAlex and adds its references and the
+papers that cite it. The new records go through screening like any others
+and are counted in the flow diagram under `citations`. Run it again after
+screening them to go one round further. `--from-abstract` starts from the
+records included at the abstract stage instead.
+
+## Data extraction
+
+List what you want from each study in `protocol.yaml`:
+
+```yaml
+extraction:
+  - name: design
+    question: What was the study design?
+    choices: [RCT, cohort, case-control, other]
+  - name: sample_size
+    question: How many participants were analysed?
+```
+
+```
+papersift extract
+papersift export --extraction
+```
+
+`extract` asks each question for each included study. The export is one row
+per study and one column per field.
 
 ## More than one reviewer
 
@@ -133,6 +179,14 @@ with a reason and a one-sentence note. It is told to exclude at the abstract
 stage only when the abstract leaves no doubt, and to answer "maybe"
 otherwise. Full-text screening reads the PDFs downloaded by `papersift fetch`.
 
+```
+papersift extract --ai
+```
+
+fills in the extraction fields from each PDF, with a supporting quote for
+every value. `papersift extract` then shows you each AI value to accept or
+correct. Values nobody has checked are listed per study in the export.
+
 The AI is one reviewer, not the final word. Check its work:
 
 ```
@@ -147,6 +201,42 @@ The default model is `claude-opus-5-5`. Choose another with `--model` or
 `PAPERSIFT_MODEL`; a smaller model costs much less on large screens. Titles,
 abstracts and PDFs are sent to the Anthropic API.
 
+## Zotero
+
+Set `ZOTERO_API_KEY` to a key with write access, from
+zotero.org/settings/keys. Add `--group ID` to use a group library.
+
+| To | Run |
+| --- | --- |
+| Send included studies to a Zotero collection | `papersift zotero push` |
+| Send the reports needed at full text | `papersift zotero push --what fulltext` |
+| Send the records still to screen | `papersift zotero push --what to-screen` |
+| Bring a collection into the review | `papersift zotero pull --collection "Name"` |
+| Copy PDFs you have in Zotero into the review | `papersift zotero pdfs` |
+| Read screening decisions from Zotero tags | `papersift zotero decisions --collection "Name"` |
+
+To screen inside Zotero, push the records, tag each item `include`,
+`exclude` or `maybe`, then run `zotero decisions`. At full text add
+`--fulltext` and write the reason in the tag: `exclude: Not a controlled
+study`, or `no full text`.
+
+A typical use at full text: push the reports, let Zotero find the PDFs
+through your library's access, then `papersift zotero pdfs`.
+
+## AI assistants (MCP)
+
+`papersift mcp` runs an MCP server, so Claude Code, Claude Desktop or any
+other MCP client can run the review with you: develop and test searches,
+screen, extract and report.
+
+```
+claude mcp add papersift -- papersift mcp --project /path/to/my-review
+```
+
+For other clients, the command is `papersift` with the arguments `mcp
+--project /path/to/my-review`. Decisions made this way are stored under an
+`ai:` reviewer name and counted as AI decisions in the report.
+
 ## Scripting
 
 Every step also works without prompts, for scripts or coding agents:
@@ -160,12 +250,16 @@ papersift decide 42 exclude --fulltext --reviewer ana --reason "Not a controlled
 
 ## Limits
 
-- Duplicate detection needs matching DOIs or titles. It will miss a preprint
-  whose title changed on publication.
+- Duplicate detection can miss a preprint whose title, abstract and first
+  author all changed on publication.
+- Crossref is not a search source because it has no boolean search. Scopus
+  and Web of Science need institutional access; export from them and use
+  `papersift add`.
 - Full texts behind a paywall are not downloaded. Save them yourself as
   `fulltext/<id>.pdf` and run `papersift fetch` again.
-- The flow diagram covers database searches. Records from citation chasing
-  or other sources can be added with `papersift add` and are counted by file.
+- The flow diagram is a single column. Records from citation chasing and
+  imported files are counted as their own sources in the first box, not in
+  the separate "other methods" column of the full PRISMA 2020 template.
 
 ## Development
 
