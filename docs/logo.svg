@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" width="520" height="150">
+  <defs>
+    <clipPath id="mesh"><ellipse cx="75" cy="62" rx="50" ry="19"/></clipPath>
+  </defs>
+  <path d="M19 60v14c0 13 25 24 56 24s56-11 56-24V60" fill="#8a2a17"/>
+  <ellipse cx="75" cy="60" rx="56" ry="24" fill="#c0432a"/>
+  <ellipse cx="75" cy="62" rx="50" ry="19" fill="#fbf3e4"/>
+  <g clip-path="url(#mesh)" stroke="#8a2a17" stroke-width="1.3">
+    <path d="M35 40v44M45 40v44M55 40v44M65 40v44M75 40v44M85 40v44M95 40v44M105 40v44M115 40v44"/>
+    <path d="M20 48h110M20 55h110M20 62h110M20 69h110M20 76h110"/>
+  </g>
+  <g fill="#e39a2d">
+    <circle cx="58" cy="110" r="4"/>
+    <circle cx="80" cy="118" r="4"/>
+    <circle cx="96" cy="107" r="4"/>
+    <circle cx="70" cy="132" r="4"/>
+  </g>
+  <text x="152" y="92" font-family="Georgia, 'Times New Roman', serif" font-size="64" fill="#3b2a26">paper<tspan fill="#c0432a">sift</tspan></text>
+</svg>
