@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .project import Protocol, ProjectError, find_root
+from .sources.http import SourceError, get
 from .store import ABSTRACT, EXCLUDE, FULLTEXT, INCLUDE, MAYBE, Decision, Record, Store
 
 DEFAULT_MODEL = "claude-opus-5-5"
@@ -36,8 +37,60 @@ def model_name(model: str | None = None) -> str:
     return model or os.environ.get("PAPERSIFT_MODEL") or DEFAULT_MODEL
 
 
+class Compatible:
+    """A model behind any server that speaks the OpenAI chat-completions protocol.
+
+    Covers hosted open models and local servers such as Ollama. These read text
+    only, so they screen abstracts but not PDFs.
+    """
+    reads_pdf = False
+
+    def __init__(self, base: str, key: str | None):
+        self.url = base.rstrip("/") + "/chat/completions"
+        self.headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if key:
+            self.headers["Authorization"] = f"Bearer {key}"
+
+    def complete(self, model: str, system: str, text: str) -> str:
+        body = {"model": model, "temperature": 0, "max_tokens": 1024,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": text}]}
+        reply = json.loads(get(self.url, data=json.dumps(body).encode(), method="POST",
+                               headers=self.headers, tries=6))
+        return reply["choices"][0]["message"]["content"] or ""
+
+    def ask(self, model: str, system: str, content: list[dict], schema: dict) -> dict | None:
+        system += ("\n\nReply with one JSON object and nothing else. It must match this "
+                   "JSON schema:\n" + json.dumps(schema))
+        text = "\n\n".join(block["text"] for block in content if block["type"] == "text")
+        for _ in range(2):
+            reply = self.complete(model, system, text)
+            try:
+                answer = json.loads(reply[reply.index("{"):reply.rindex("}") + 1])
+            except ValueError:
+                continue
+            if _matches(answer, schema):
+                return answer
+        return None
+
+
+def _matches(answer, schema: dict) -> bool:
+    """Check an answer against the small subset of JSON schema used here."""
+    if schema["type"] == "string":
+        return isinstance(answer, str) and answer in schema.get("enum", [answer])
+    return (isinstance(answer, dict) and set(answer) == set(schema["required"])
+            and all(_matches(answer[name], part) for name, part in schema["properties"].items()))
+
+
 def client(model: str):
     """An API client, after checking that the credentials and the model work."""
+    base = os.environ.get("PAPERSIFT_API_BASE")
+    if base:
+        api = Compatible(base, os.environ.get("PAPERSIFT_API_KEY"))
+        try:
+            api.complete(model, "Reply with the word ok.", "ok?")
+        except (SourceError, KeyError, ValueError) as err:
+            raise ProjectError(f"The model server at {base} did not answer for '{model}': {err}") from None
+        return api
     try:
         import anthropic
     except ImportError:
@@ -51,8 +104,13 @@ def client(model: str):
         raise ProjectError(f"Could not reach the Anthropic API: {err}") from None
     except (anthropic.AnthropicError, TypeError) as err:
         raise ProjectError(
-            f"The AI features need an Anthropic API key in ANTHROPIC_API_KEY. ({err})") from None
+            "The AI features need an Anthropic API key in ANTHROPIC_API_KEY, or another "
+            f"model server in PAPERSIFT_API_BASE. ({err})") from None
     return api
+
+
+def reads_pdf(api) -> bool:
+    return getattr(api, "reads_pdf", True)
 
 
 def protocol_text(protocol: Protocol) -> str:
@@ -101,6 +159,8 @@ def _content(record: Record, stage: str, root: Path) -> list[dict] | None:
 
 def ask(api, model: str, system: str, content: list[dict], schema: dict, effort: str) -> dict | None:
     """One structured answer from the model, or None if it gave no usable answer."""
+    if isinstance(api, Compatible):
+        return api.ask(model, system, content, schema)
     response = api.messages.create(
         model=model,
         max_tokens=8000,
@@ -119,19 +179,24 @@ def ask(api, model: str, system: str, content: list[dict], schema: dict, effort:
 
 def _each(jobs: list, work):
     """Run work(job) over a few threads, yielding (job, answer) with None on API errors."""
-    import anthropic
+    errors: tuple = (SourceError, KeyError)
+    try:
+        import anthropic
+        errors += (anthropic.APIError,)
+    except ImportError:
+        pass
 
     def safe(job):
         try:
             return job, work(job)
-        except anthropic.APIError:
+        except errors:
             return job, None
 
     with ThreadPoolExecutor(WORKERS) as pool:
         for done, result in enumerate(pool.map(safe, jobs), 1):
             yield result
             if done % 25 == 0 or done == len(jobs):
-                print(f"  {done} of {len(jobs)}")
+                print(f"  {done} of {len(jobs)}", flush=True)
 
 
 def screen_all(store: Store, protocol: Protocol, stage: str,
@@ -140,6 +205,9 @@ def screen_all(store: Store, protocol: Protocol, stage: str,
         raise ProjectError("The protocol has no criteria for the AI to apply.")
     model, root = model_name(model), find_root()
     api = client(model)
+    if stage == FULLTEXT and not reads_pdf(api):
+        raise ProjectError("This model server reads text only. Full-text AI screening "
+                           "needs the Anthropic API.")
     reviewer = f"ai:{model}"
     system = INSTRUCTIONS[stage] + "\n\n" + protocol_text(protocol)
     queue = store.todo(stage, reviewer)[:limit]
@@ -216,7 +284,7 @@ def extract_all(store: Store, protocol: Protocol, model: str | None = None,
 
     jobs, abstract_only = [], 0
     for record in todo:
-        content = _content(record, FULLTEXT, root)
+        content = _content(record, FULLTEXT, root) if reads_pdf(api) else None
         if content is None:
             abstract_only += 1
             content = _content(record, ABSTRACT, root)

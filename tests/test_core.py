@@ -227,3 +227,15 @@ def test_accuracy_against_reference(tmp_path):
     assert round(r["recall"], 3) == 0.667 and round(r["specificity"], 3) == 0.667
     assert r["missed_ids"] == [ids[2]] and r["final_missed_ids"] == [ids[2]]
     assert r["final_includes"] == 2 and r["work_saved"] == 0.5
+
+
+def test_compatible_backend_parses_and_checks_json(monkeypatch):
+    from papersift import ai
+    api = ai.Compatible("http://localhost/v1", None)
+    replies = iter(['Sure! {"decision": "keep", "reason": "", "note": "x"}',
+                    '```json\n{"decision": "include", "reason": "", "note": "fits"}\n```'])
+    monkeypatch.setattr(api, "complete", lambda *a: next(replies))
+    answer = api.ask("m", "sys", [{"type": "text", "text": "Title: T"}], ai._schema(ABSTRACT))
+    assert answer == {"decision": "include", "reason": "", "note": "fits"}
+    monkeypatch.setattr(api, "complete", lambda *a: "no json here")
+    assert api.ask("m", "sys", [{"type": "text", "text": "T"}], ai._schema(ABSTRACT)) is None

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .ai import client, model_name, protocol_text
+from .ai import Compatible, client, model_name, protocol_text
 from .project import PROTOCOL_FILE, Protocol, ProjectError, save_searches
 from .sources import SOURCES, SourceError, get_source
 
@@ -39,6 +39,8 @@ def plan(root: Path, protocol: Protocol, model: str | None = None, known: list[s
         raise ProjectError(f"Write the review question in {PROTOCOL_FILE} first.")
     model, known = model_name(model), known or []
     api = client(model)
+    if isinstance(api, Compatible):
+        raise ProjectError("`papersift plan` needs the Anthropic API. Unset PAPERSIFT_API_BASE to use it.")
     years = (protocol.year_from, protocol.year_to)
     proposed: list[dict] = []
     calls = 0
