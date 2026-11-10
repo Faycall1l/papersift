@@ -157,3 +157,22 @@ def test_save_searches_keeps_rest_of_protocol(tmp_path):
     protocol = load_protocol(tmp_path)
     assert protocol.searches == [{"source": "pubmed", "query": 'a[tiab] AND "b c"[tiab]'}]
     assert "# The review protocol" in text and protocol.year_from == 2015
+
+
+def test_near_duplicates(tmp_path):
+    store = Store(tmp_path / "t.db")
+    abstract = "We study the effect of sleep on memory consolidation in adults. " * 8
+    store.add_records([
+        Record(source="a", source_id="1", title="Sleep and memory consolidation in older adults: a randomised trial",
+               authors=["Jane Doe", "R Roe"], year=2021, abstract=abstract),
+        Record(source="b", source_id="1", title="Sleep and memory consolidation in older adults: a randomized trial",
+               authors=["Doe, Jane"], year=2022),
+        Record(source="c", source_id="1", title="Does sleeping well help you remember? A trial",
+               authors=["Doe J"], year=2022, abstract=abstract),
+        Record(source="d", source_id="1", title="Sleep and memory consolidation in older adults: a randomised trial, part 2",
+               authors=["Jane Doe"], year=2021),
+        Record(source="e", source_id="1", title="Sleep and memory consolidation in older adults: a randomized trials",
+               authors=["Someone Else"], year=2021),
+    ])
+    assert mark_duplicates(store) == 2
+    assert [r.source for r in store.records()] == ["a", "d", "e"]
