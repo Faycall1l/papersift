@@ -11,7 +11,6 @@ from .project import Protocol, ProjectError, find_root
 from .sources.http import SourceError, get
 from .store import ABSTRACT, EXCLUDE, FULLTEXT, INCLUDE, MAYBE, Decision, Record, Store
 
-DEFAULT_MODEL = "claude-opus-5-5"
 MAX_PDF_BYTES = 30 * 1024 * 1024
 WORKERS = 4
 
@@ -34,7 +33,10 @@ INSTRUCTIONS = {
 
 
 def model_name(model: str | None = None) -> str:
-    return model or os.environ.get("PAPERSIFT_MODEL") or DEFAULT_MODEL
+    name = model or os.environ.get("PAPERSIFT_MODEL")
+    if not name:
+        raise ProjectError("Choose a model with --model or the PAPERSIFT_MODEL environment variable.")
+    return name
 
 
 class Compatible:

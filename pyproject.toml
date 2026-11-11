@@ -9,12 +9,24 @@ description = "Find and screen papers for systematic reviews, PRISMA style."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.9"
+authors = [{ name = "Faycall1l" }]
+keywords = ["systematic review", "PRISMA", "literature search", "screening", "meta-analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: Python :: 3",
+]
 dependencies = ["pyyaml>=6"]
 
 [project.optional-dependencies]
 ai = ["anthropic>=1.0"]
 mcp = ["mcp>=2; python_version >= '3.10'"]
 dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/Faycall1l/papersift"
+Issues = "https://github.com/Faycall1l/papersift/issues"
 
 [project.scripts]
 papersift = "papersift.cli:main"
