@@ -65,6 +65,42 @@ def cmd_add(args) -> None:
     print(f"Duplicates marked: {mark_duplicates(store)}")
 
 
+def _discovered(store, source: str, query: str, found: list, add: bool) -> None:
+    from .discover import in_review
+    have = in_review(store, found)
+    for record, known in zip(found, have):
+        print(f"  {'have' if known else 'new ':4}  {record.year or '    '}  {record.title[:110]}")
+    new = len(found) - sum(have)
+    print(f"{len(found)} found, {new} not yet in the review")
+    if not add:
+        if new:
+            print("Run again with --add to put them in the review.")
+        return
+    added = store.add_records(found)
+    store.log_search(source, query, len(found), added)
+    print(f"Added {added}. Duplicates marked: {mark_duplicates(store)}")
+    print("New records are waiting in `papersift screen`.")
+
+
+def cmd_find(args) -> None:
+    from .sources import openalex
+    _, protocol, store = open_project()
+    question = args.question or protocol.question
+    if not question:
+        raise ProjectError("Give a question, or write one in protocol.yaml.")
+    works = openalex.semantic(question, protocol.year_from, protocol.year_to)
+    found = [openalex.to_record(work, "openalex-semantic") for work in works]
+    _discovered(store, "openalex-semantic", question, found, args.add)
+
+
+def cmd_similar(args) -> None:
+    from .discover import similar
+    _, _, store = open_project()
+    found, liked, disliked = similar(store, args.limit)
+    print(f"Recent papers like {liked} included records and unlike {disliked} excluded ones:")
+    _discovered(store, "similar", f"like {liked} included, unlike {disliked} excluded", found, args.add)
+
+
 def cmd_chase(args) -> None:
     from .chase import chase
     _, _, store = open_project()
@@ -75,7 +111,8 @@ def cmd_chase(args) -> None:
         raise ProjectError("No included studies to start from. Screen first, "
                            "or use --from-abstract to start from the abstract-stage includes.")
     both = not (args.backward or args.forward)
-    result = chase(store, seeds, backward=both or args.backward, forward=both or args.forward)
+    result = chase(store, seeds, backward=both or args.backward, forward=both or args.forward,
+                   min_links=args.min_links)
     print(f"Started from {result['seeds']} studies ({result['unresolved']} not found in OpenAlex)")
     print(f"Found {result['found']} citing or cited records, {result['added']} new")
     print(f"Duplicates marked: {mark_duplicates(store)}")
@@ -375,6 +412,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from-abstract", action="store_true",
                    help="start from records included at the abstract stage")
 
+    p.add_argument("--min-links", type=int, default=1, metavar="N",
+                   help="keep only papers linked to at least N of the included studies")
+
+    p = command("find", cmd_find, "Search by meaning with a question in plain language.")
+    p.add_argument("question", nargs="?", help="defaults to the question in protocol.yaml")
+    p.add_argument("--add", action="store_true", help="add the results to the review")
+
+    p = command("similar", cmd_similar, "Find recent papers similar to the ones you included.")
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--add", action="store_true", help="add the results to the review")
+
     p = command("duplicates", cmd_duplicates, "List records removed as duplicates.")
     p.add_argument("--keep", type=int, metavar="ID", help="restore a record wrongly removed")
 
@@ -454,7 +502,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ProjectError, SourceError, ValueError) as err:
         print(f"papersift: {err}", file=sys.stderr)
         return 1
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print()
         return 130
     return 0

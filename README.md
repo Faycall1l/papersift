@@ -146,6 +146,35 @@ and are counted in the flow diagram under `citations`. Run it again after
 screening them to go one round further. `--from-abstract` starts from the
 records included at the abstract stage instead.
 
+Chasing can return thousands of records. `--min-links 2` keeps only the
+papers that cite, or are cited by, at least two of your included studies.
+
+## Checking what the searches missed
+
+Boolean searches miss papers that use other words. Two commands look for
+them. Both only list what they find, marking each `have` or `new`; add
+`--add` to put the results in the review, where they are screened like any
+other record and counted in the flow diagram as their own source.
+
+```
+papersift find
+papersift find "does remote monitoring keep heart failure patients out of hospital?"
+```
+
+`find` searches OpenAlex by meaning rather than by keywords and returns the
+50 closest papers. With no argument it uses the question in `protocol.yaml`.
+If most results are `have`, your searches cover the topic; a lot of `new`
+relevant ones means the queries need more terms.
+
+```
+papersift similar
+```
+
+`similar` asks Semantic Scholar for papers like the ones you included and
+unlike the ones you excluded. It only returns papers from the last few
+months, so it is for catching new work and keeping a finished review up to
+date.
+
 ## Data extraction
 
 List what you want from each study in `protocol.yaml`:

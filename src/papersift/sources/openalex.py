@@ -77,3 +77,12 @@ def _abstract(index: dict | None) -> str | None:
         return None
     words = sorted((pos, word) for word, positions in index.items() for pos in positions)
     return " ".join(word for _, word in words)
+
+
+def semantic(question: str, year_from: int | None = None, year_to: int | None = None) -> list[dict]:
+    """The 50 works closest in meaning to a question written in plain language."""
+    params = {"search.semantic": question, "per-page": 50, "select": FIELDS,
+              "api_key": os.environ.get("OPENALEX_API_KEY")}
+    if year_from or year_to:
+        params["filter"] = f"publication_year:{year_from or 1500}-{year_to or 2100}"
+    return json.loads(get(URL, params, tries=6)).get("results") or []

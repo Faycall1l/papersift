@@ -264,3 +264,19 @@ def test_relevance_ranking_and_streak(tmp_path):
     for r, decision in zip(records, [INCLUDE, EXCLUDE, EXCLUDE]):
         vote(store, r.id, "ana", decision)
     assert store.since_last_include(ABSTRACT, "ana") == 2
+
+
+def test_discovery_helpers(tmp_path):
+    from papersift.discover import in_review
+    from papersift.sources.semanticscholar import paper_id
+
+    store = Store(tmp_path / "db")
+    store.add_records([Record(source="x", source_id="1", doi="10.1/ABC", title="A study of sieves in the wild")])
+    found = [Record(source="y", source_id="2", doi="https://doi.org/10.1/abc", title="Other"),
+             Record(source="y", source_id="3", title="A Study of Sieves in the Wild."),
+             Record(source="y", source_id="4", title="Something else entirely")]
+    assert in_review(store, found) == [True, True, False]
+    assert paper_id(Record(source="arxiv", source_id="2206.10498v3", title="t")) == "ARXIV:2206.10498"
+    assert paper_id(Record(source="x", source_id="1", doi="10.48550/arxiv.2206.10498", title="t")) == "ARXIV:2206.10498"
+    assert paper_id(Record(source="x", source_id="1", doi="10.1/abc", title="t")) == "DOI:10.1/abc"
+    assert paper_id(Record(source="x", source_id="1", title="t")) is None

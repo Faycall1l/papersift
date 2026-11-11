@@ -14,6 +14,7 @@ from ..store import Record
 from .http import get
 
 URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
+RECOMMEND = "https://api.semanticscholar.org/recommendations/v1/papers"
 FIELDS = "title,abstract,year,venue,authors,externalIds,openAccessPdf,url"
 
 
@@ -65,3 +66,26 @@ def _record(paper: dict) -> Record:
         url=paper.get("url"),
         pdf_url=(paper.get("openAccessPdf") or {}).get("url") or None,
     )
+
+
+def paper_id(record: Record) -> str | None:
+    if record.source == "semanticscholar" and record.source_id:
+        return record.source_id
+    if record.source == "arxiv" and record.source_id:
+        return "ARXIV:" + record.source_id.split("v")[0]
+    doi = record.doi or ""
+    if doi.lower().startswith("10.48550/arxiv."):
+        return "ARXIV:" + doi[len("10.48550/arxiv."):]
+    return f"DOI:{doi}" if doi else None
+
+
+def recommend(liked: list[str], disliked: list[str], limit: int = 100) -> list[Record]:
+    """Recently published papers similar to the liked ones and unlike the disliked ones."""
+    key = os.environ.get("S2_API_KEY")
+    body = {"positivePaperIds": liked, "negativePaperIds": disliked}
+    reply = json.loads(get(
+        RECOMMEND, {"fields": FIELDS, "limit": limit}, tries=6, method="POST",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", **({"x-api-key": key} if key else {})},
+    ))
+    return [_record(paper) for paper in reply.get("recommendedPapers") or []]
