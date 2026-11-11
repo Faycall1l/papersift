@@ -82,6 +82,36 @@ near-identical title or abstract (a preprint and its journal version).
 `papersift duplicates` lists what was removed and `--keep ID` restores one.
 Screening can be stopped and resumed at any time.
 
+## Screening faster
+
+Once you have included one record and excluded one, `papersift screen`
+learns from your decisions and shows the remaining records most likely
+relevant first, re-ranking after every decision. The relevant papers come
+early, and the header shows how many records you have screened since your
+last include, which is the usual signal for when to stop. It runs on your
+computer and needs no AI key. `--in-order` turns it off.
+
+To see how well this works for your topic, replay it on records someone has
+already screened:
+
+```
+papersift simulate ana
+```
+
+It reports how many of ana's includes are found after screening 10%, 25% and
+50% of the records, and the work saved at 95% recall.
+
+To colour words while screening, list them in `protocol.yaml`:
+
+```yaml
+highlight:
+  include: [randomised, trial]
+  exclude: [mice, protocol]
+```
+
+For dual screening, set `reviewers: 2` in `protocol.yaml`. A record's
+outcome then counts only once two reviewers have decided it.
+
 ## Writing searches
 
 Each database has its own query language.

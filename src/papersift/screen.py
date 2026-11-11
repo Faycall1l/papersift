@@ -1,11 +1,14 @@
 """Screening in the terminal, one record at a time."""
 from __future__ import annotations
 
+import re
 import shutil
+import sys
 import textwrap
 import webbrowser
 
 from .project import Protocol
+from .rank import by_relevance, features
 from .store import (ABSTRACT, CONFLICT, CONSENSUS, EXCLUDE, FULLTEXT, INCLUDE, MAYBE,
                     UNAVAILABLE, Decision, Record, Store, is_ai)
 
@@ -15,17 +18,31 @@ KEYS = {
 }
 
 
-def show(record: Record, position: str = "") -> None:
+GREEN, RED, RESET = "\033[1;32m", "\033[1;31m", "\033[0m"
+
+
+def colour(text: str, protocol: Protocol | None) -> str:
+    """Mark the protocol's highlight words, when writing to a terminal."""
+    if not protocol or not sys.stdout.isatty():
+        return text
+    for words, code in ((protocol.highlight_include, GREEN), (protocol.highlight_exclude, RED)):
+        if words:
+            pattern = "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+            text = re.sub(rf"\b({pattern})\w*", lambda m: f"{code}{m.group()}{RESET}", text, flags=re.I)
+    return text
+
+
+def show(record: Record, position: str = "", protocol: Protocol | None = None) -> None:
     width = min(shutil.get_terminal_size().columns, 100)
     print("\n" + "-" * width)
     details = " · ".join(str(x) for x in (position, record.year, record.venue) if x)
     print(details)
-    print(textwrap.fill(record.title, width))
+    print(colour(textwrap.fill(record.title, width), protocol))
     if record.authors:
         names = ", ".join(record.authors[:6]) + (" et al." if len(record.authors) > 6 else "")
         print(textwrap.fill(names, width))
     print()
-    print(textwrap.fill(record.abstract or "(no abstract)", width))
+    print(colour(textwrap.fill(record.abstract or "(no abstract)", width), protocol))
     if record.pdf_path:
         print(f"\nFull text: {record.pdf_path}")
     print()
@@ -58,8 +75,12 @@ def ask_reason(protocol: Protocol) -> str | None:
 
 
 def run(store: Store, protocol: Protocol, stage: str, reviewer: str,
-        show_ai: bool = False) -> None:
-    """Ask the reviewer about each record they have not decided at this stage."""
+        show_ai: bool = False, ranked: bool = True) -> None:
+    """Ask the reviewer about each record they have not decided at this stage.
+
+    Once the reviewer has included and excluded at least one record, the rest are
+    shown most likely relevant first, re-ranked after every decision.
+    """
     resolving = reviewer == CONSENSUS
     if resolving:
         outcomes = store.outcomes(stage)
@@ -74,10 +95,27 @@ def run(store: Store, protocol: Protocol, stage: str, reviewer: str,
         print("Include if:", *[f"  + {c}" for c in protocol.include], sep="\n")
         print("Exclude if:", *[f"  - {c}" for c in protocol.exclude], sep="\n")
 
+    ranked = ranked and not resolving
+    cache = {r.id: features(r) for r in store.eligible(stage)} if ranked else {}
     position = 0
+
+    def rerank() -> bool:
+        """Sort the records not yet shown by relevance. False until there is enough to learn from."""
+        labels = {
+            record_id: d.decision == INCLUDE
+            for record_id, votes in store.decisions(stage).items()
+            for d in votes if d.reviewer == reviewer and d.decision in (INCLUDE, EXCLUDE)
+        }
+        queue[position:] = by_relevance(queue[position:], labels, cache)
+        return len(set(labels.values())) == 2
+
+    learning = ranked and rerank()
+    if learning:
+        print("Showing the records most likely to be relevant first.")
     while position < len(queue):
         record = queue[position]
-        show(record, f"{position + 1} of {len(queue)}")
+        streak = f"{store.since_last_include(stage, reviewer)} since last include" if learning else ""
+        show(record, " · ".join(x for x in (f"{position + 1} of {len(queue)}", streak) if x), protocol)
         votes = store.decisions(stage).get(record.id, [])
         if resolving:
             show_votes(votes)
@@ -107,6 +145,7 @@ def run(store: Store, protocol: Protocol, stage: str, reviewer: str,
         elif key == "i":
             store.decide(Decision(record.id, stage, reviewer, INCLUDE))
             position += 1
+            learning = ranked and rerank()
         elif key == "m" and stage == ABSTRACT and not resolving:
             store.decide(Decision(record.id, stage, reviewer, MAYBE))
             position += 1
@@ -119,4 +158,5 @@ def run(store: Store, protocol: Protocol, stage: str, reviewer: str,
                 continue
             store.decide(Decision(record.id, stage, reviewer, EXCLUDE, reason))
             position += 1
+            learning = ranked and rerank()
     print("\nDone. Run `papersift status` to see where the review stands.")

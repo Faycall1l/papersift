@@ -45,7 +45,9 @@ def build():
 
     def project():
         root = find_root()
-        return root, load_protocol(root), Store(root / DB_FILE)
+        p, store = load_protocol(root), Store(root / DB_FILE)
+        store.required = p.reviewers
+        return root, p, store
 
     def stage_of(stage: str) -> str:
         if stage not in STAGES:

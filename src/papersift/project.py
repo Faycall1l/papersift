@@ -28,6 +28,15 @@ criteria:
     - Not a research paper (editorial, tutorial, abstract only)
     - Not in English
 
+# How many reviewers must decide each record before its outcome counts.
+# An AI reviewer counts as one.
+reviewers: 1
+
+# Words to colour while screening: green for include, red for exclude.
+highlight:
+  include: []
+  exclude: []
+
 # Publication years to search. Remove a line to leave that side open.
 years:
   from: 2015
@@ -64,6 +73,9 @@ class Protocol:
     year_to: int | None = None
     searches: list[dict] = field(default_factory=list)
     extraction: list[dict] = field(default_factory=list)
+    reviewers: int = 1
+    highlight_include: list[str] = field(default_factory=list)
+    highlight_exclude: list[str] = field(default_factory=list)
 
 
 def find_root(start: Path | None = None) -> Path:
@@ -84,6 +96,7 @@ def load_protocol(root: Path) -> Protocol:
         raise ProjectError(f"{PROTOCOL_FILE} is not valid YAML: {err}") from err
     criteria = data.get("criteria") or {}
     years = data.get("years") or {}
+    highlight = data.get("highlight") or {}
     return Protocol(
         title=str(data.get("title") or ""),
         question=str(data.get("question") or ""),
@@ -92,6 +105,9 @@ def load_protocol(root: Path) -> Protocol:
         year_from=years.get("from"),
         year_to=years.get("to"),
         searches=list(data.get("searches") or []),
+        reviewers=max(1, int(data.get("reviewers") or 1)),
+        highlight_include=[str(w) for w in highlight.get("include") or []],
+        highlight_exclude=[str(w) for w in highlight.get("exclude") or []],
         extraction=[
             {"name": str(f["name"]), "question": str(f.get("question") or f["name"]),
              "choices": [str(c) for c in f.get("choices") or []]}

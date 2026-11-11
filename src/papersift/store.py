@@ -110,13 +110,16 @@ def is_ai(reviewer: str) -> bool:
     return reviewer == "ai" or reviewer.startswith("ai:")
 
 
-def settle(decisions: list[Decision]) -> str:
-    """The outcome of one record at one stage, given every reviewer's decision."""
+def settle(decisions: list[Decision], required: int = 1) -> str:
+    """The outcome of one record at one stage, given every reviewer's decision.
+
+    The record stays pending until `required` reviewers have decided.
+    """
     for d in decisions:
         if d.reviewer == CONSENSUS:
             return d.decision
     votes = {d.decision for d in decisions}
-    if not votes:
+    if len(decisions) < required:
         return PENDING
     if len(votes) == 1 and MAYBE not in votes:
         return votes.pop()
@@ -128,6 +131,7 @@ class Store:
         self.db = sqlite3.connect(str(path))
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        self.required = 1  # reviewers needed before a record's outcome counts
 
     def close(self) -> None:
         self.db.close()
@@ -218,7 +222,19 @@ class Store:
 
     def outcomes(self, stage: str) -> dict[int, str]:
         decisions = self.decisions(stage)
-        return {r.id: settle(decisions.get(r.id, [])) for r in self.eligible(stage)}
+        return {r.id: settle(decisions.get(r.id, []), self.required) for r in self.eligible(stage)}
+
+    def since_last_include(self, stage: str, reviewer: str) -> int:
+        """How many records this reviewer has decided since their most recent include."""
+        rows = self.db.execute(
+            "SELECT decision FROM decisions WHERE stage = ? AND reviewer = ? ORDER BY rowid DESC",
+            (stage, reviewer))
+        count = 0
+        for row in rows:
+            if row["decision"] == INCLUDE:
+                break
+            count += 1
+        return count
 
     def todo(self, stage: str, reviewer: str) -> list[Record]:
         """Records this reviewer has not decided yet."""

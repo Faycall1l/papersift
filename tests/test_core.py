@@ -239,3 +239,28 @@ def test_compatible_backend_parses_and_checks_json(monkeypatch):
     assert answer == {"decision": "include", "reason": "", "note": "fits"}
     monkeypatch.setattr(api, "complete", lambda *a: "no json here")
     assert api.ask("m", "sys", [{"type": "text", "text": "T"}], ai._schema(ABSTRACT)) is None
+
+
+def test_required_reviewers():
+    d = lambda who, what: Decision(1, ABSTRACT, who, what)
+    assert settle([d("a", INCLUDE)], required=2) == PENDING
+    assert settle([d("a", INCLUDE), d("b", INCLUDE)], required=2) == INCLUDE
+    assert settle([d("a", INCLUDE), d("b", EXCLUDE)], required=2) == CONFLICT
+    assert settle([d(CONSENSUS, EXCLUDE)], required=2) == EXCLUDE
+
+
+def test_relevance_ranking_and_streak(tmp_path):
+    from papersift.rank import by_relevance, features, simulate
+    store = Store(tmp_path / "t.db")
+    topics = ["randomised trial of sleep and memory in adults"] * 6 + ["mouse model of liver enzyme kinetics"] * 6
+    store.add_records([Record(source="a", source_id=str(i), title=f"{t} study {i}") for i, t in enumerate(topics)])
+    records = store.records()
+    cache = {r.id: features(r) for r in records}
+    assert by_relevance(records, {records[0].id: True}, cache) is records
+    ordered = by_relevance(records[2:], {records[0].id: True, records[11].id: False}, cache)
+    assert all("sleep" in r.title for r in ordered[:4])
+    truth = {r.id: "sleep" in r.title for r in records}
+    assert simulate(records, truth, runs=2, batch=1)["needed_for_95"] <= 7
+    for r, decision in zip(records, [INCLUDE, EXCLUDE, EXCLUDE]):
+        vote(store, r.id, "ana", decision)
+    assert store.since_last_include(ABSTRACT, "ana") == 2

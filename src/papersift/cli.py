@@ -20,7 +20,9 @@ from .store import (ABSTRACT, CONSENSUS, EXCLUDE, FULLTEXT, INCLUDE, MAYBE, UNAV
 
 def open_project():
     root = find_root()
-    return root, load_protocol(root), Store(root / DB_FILE)
+    protocol, store = load_protocol(root), Store(root / DB_FILE)
+    store.required = protocol.reviewers
+    return root, protocol, store
 
 
 def stage_of(args) -> str:
@@ -103,7 +105,8 @@ def cmd_screen(args) -> None:
         from .ai import screen_all
         screen_all(store, protocol, stage_of(args), model=args.model, limit=args.limit)
         return
-    screen.run(store, protocol, stage_of(args), reviewer_of(args), show_ai=args.show_ai)
+    screen.run(store, protocol, stage_of(args), reviewer_of(args), show_ai=args.show_ai,
+               ranked=not args.in_order)
 
 
 def cmd_extract(args) -> None:
@@ -265,6 +268,25 @@ def cmd_agreement(args) -> None:
             print(f"  {names[0]} {a} / {names[1]} {b}: {n}")
 
 
+def cmd_simulate(args) -> None:
+    from .rank import simulate
+    _, _, store = open_project()
+    stage = stage_of(args)
+    truth = {}
+    for record_id, votes in store.decisions(stage).items():
+        for d in votes:
+            if d.reviewer == args.reference and d.decision in (INCLUDE, EXCLUDE):
+                truth[record_id] = d.decision == INCLUDE
+    r = simulate(store.eligible(stage), truth)
+    print(f"{r['records']} records, {r['relevant']} included by {args.reference}; "
+          f"average of {r['runs']} runs")
+    for mark, recall in r["recall_at"].items():
+        print(f"After screening {mark:.0%} of records: {recall:.1%} of the includes found")
+    print(f"Records screened to find 95% of the includes: {r['needed_for_95']:.0f} "
+          f"({r['needed_for_95'] / r['records']:.0%})")
+    print(f"Work saved at 95% recall (WSS@95): {r['wss95']:.1%}")
+
+
 def cmd_list(args) -> None:
     _, _, store = open_project()
     stage = stage_of(args)
@@ -361,6 +383,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = staged(command("screen", cmd_screen, "Screen records one at a time."))
     p.add_argument("--ai", action="store_true", help="let AI screen as one more reviewer")
     p.add_argument("--show-ai", action="store_true", help="show the AI's decision while you screen")
+    p.add_argument("--in-order", action="store_true",
+                   help="show records in the order they were added, not most relevant first")
     p.add_argument("--limit", type=int, help="with --ai, screen at most this many records")
     p.add_argument("--model")
 
@@ -397,6 +421,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = command("mcp", cmd_mcp, "Run as an MCP server so an AI assistant can work on the review.")
     p.add_argument("--project", help="review folder (default: the current folder)")
+
+    p = staged(command("simulate", cmd_simulate,
+                       "Test relevance ordering on records a reviewer has already screened."), who=False)
+    p.add_argument("reference", help="the reviewer whose decisions are taken as correct")
 
     p = staged(command("list", cmd_list, "List records at a stage."))
     p.add_argument("--outcome", choices=["pending", "conflict", INCLUDE, EXCLUDE, UNAVAILABLE])
