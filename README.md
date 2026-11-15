@@ -219,7 +219,7 @@ Pick the model yourself; there is no default. For a model on the Anthropic
 API:
 
 ```
-pip install "papersift[ai]"
+pip install "papersift[ai] @ git+https://github.com/Faycall1l/papersift"
 export ANTHROPIC_API_KEY=...
 export PAPERSIFT_MODEL=<model name>
 ```
