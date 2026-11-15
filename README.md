@@ -15,11 +15,15 @@ and pre-fill the extraction table. It also works with Zotero and, through MCP, w
 Needs Python 3.9 or newer.
 
 ```
-pip install papersift
+pip install git+https://github.com/Faycall1l/papersift
 ```
 
 Extras: `papersift[ai]` adds the Anthropic client, `papersift[mcp]` the MCP
-server (Python 3.10 or newer), `papersift[ai,mcp]` both.
+server (Python 3.10 or newer), `papersift[ai,mcp]` both. With an extra:
+
+```
+pip install "papersift[ai] @ git+https://github.com/Faycall1l/papersift"
+```
 
 ## A review, start to finish
 
