@@ -354,4 +354,38 @@ pip install -e ".[dev,ai]"
 pytest
 ```
 
+## References
+
+papersift reports and builds on the following.
+
+- **PRISMA flow diagram:** Page MJ, McKenzie JE, Bossuyt PM, et al. The
+  PRISMA 2020 statement: an updated guideline for reporting systematic
+  reviews. *BMJ* 2021;372:n71. doi:10.1136/bmj.n71
+- **Screening most relevant first:** the idea of learning from your
+  decisions and showing likely includes early comes from ASReview. van de
+  Schoot R, de Bruin J, Schram R, et al. An open source machine learning
+  framework for efficient and transparent systematic reviews. *Nature
+  Machine Intelligence* 2021;3:125-133. doi:10.1038/s42256-020-00287-7
+- **Work saved at 95% recall (`simulate`):** Cohen AM, Hersh WR, Peterson K,
+  Yen PY. Reducing workload in systematic review preparation using
+  automated citation classification. *J Am Med Inform Assoc*
+  2006;13:206-219. doi:10.1197/jamia.M1929
+- **Keyword highlighting:** Ouzzani M, Hammady H, Fedorowicz Z, Elmagarmid
+  A. Rayyan: a web and mobile app for systematic reviews. *Systematic
+  Reviews* 2016;5:210. doi:10.1186/s13643-016-0384-4
+- **Citation chasing:** Wohlin C. Guidelines for snowballing in systematic
+  literature studies and a replication in software engineering. *EASE '14*,
+  2014:1-10. doi:10.1145/2601248.2601268
+- **Agreement between reviewers:** Cohen J. A coefficient of agreement for
+  nominal scales. *Educational and Psychological Measurement*
+  1960;20:37-46. doi:10.1177/001316446002000104
+- **Search by meaning and citation data:** Priem J, Piwowar H, Orr R.
+  OpenAlex: a fully-open index of scholarly works, authors, venues,
+  institutions, and concepts. arXiv:2205.01833, 2022.
+- **Europe PMC:** The Europe PMC Consortium. Europe PMC: a full-text
+  literature database for the life sciences and platform for innovation.
+  *Nucleic Acids Research* 2015;43:D1042-D1048. doi:10.1093/nar/gku1061
+
+Requiring two reviewers is modelled on Covidence (covidence.org).
+
 Apache License 2.0.
