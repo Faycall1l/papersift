@@ -1,10 +1,12 @@
-<p align="center"><img src="https://raw.githubusercontent.com/Faycall1l/papersift/main/docs/logo.svg" alt="papersift" width="460"></p>
+<p align="center"><img src="docs/logo.svg" alt="papersift" width="460"></p>
 
 papersift finds and screens papers for a systematic review and keeps the
 counts a PRISMA 2020 flow diagram needs. It searches OpenAlex, PubMed,
 Europe PMC, arXiv and Semantic Scholar, reads exports from other databases,
 removes duplicates, follows citations, walks you through title/abstract and
 full-text screening and data extraction, and writes the flow diagram.
+
+<p align="center"><img src="docs/overview.svg" alt="papersift: search, screen, full text, extract, PRISMA outputs" width="100%"></p>
 
 Everything works without AI. With a language model of your choice, hosted
 or local, an AI can draft and test your searches, act as an extra reviewer
