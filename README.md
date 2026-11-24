@@ -8,6 +8,8 @@ full-text screening and data extraction, and writes the flow diagram.
 
 <p align="center"><img src="docs/overview.svg" alt="papersift: search, screen, full text, extract, PRISMA outputs" width="100%"></p>
 
+<p align="center"><img src="docs/how-it-works.svg" alt="How papersift runs a review: you decide, papersift keeps the records, optional AI helps" width="100%"></p>
+
 Everything works without AI. With a language model of your choice, hosted
 or local, an AI can draft and test your searches, act as an extra reviewer
 and pre-fill the extraction table. It also works with Zotero and, through MCP, with AI assistants.

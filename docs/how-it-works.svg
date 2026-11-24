@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 760" width="1500" height="760" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="#3b4652"/></marker></defs>
+<rect x="1" y="1" width="1498" height="758" rx="22" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+<text x="48" y="64" font-size="30" font-weight="700" fill="#24292f">How papersift runs a review</text>
+<text x="48" y="94" font-size="17" fill="#6a737d">You make the decisions. papersift keeps the records and the counts. AI is optional and its votes are always labelled.</text>
+<circle cx="272" cy="136" r="15" fill="#8a5a2b"/><text x="272" y="142" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+<text x="296" y="142" font-size="20" font-weight="700" fill="#24292f">Search</text>
+<circle cx="511" cy="136" r="15" fill="#8a5a2b"/><text x="511" y="142" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<text x="535" y="142" font-size="20" font-weight="700" fill="#24292f">Screen</text>
+<circle cx="750" cy="136" r="15" fill="#8a5a2b"/><text x="750" y="142" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+<text x="774" y="142" font-size="20" font-weight="700" fill="#24292f">Full text</text>
+<circle cx="989" cy="136" r="15" fill="#8a5a2b"/><text x="989" y="142" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+<text x="1013" y="142" font-size="20" font-weight="700" fill="#24292f">Extract</text>
+<circle cx="1228" cy="136" r="15" fill="#8a5a2b"/><text x="1228" y="142" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+<text x="1252" y="142" font-size="20" font-weight="700" fill="#24292f">Report</text>
+<rect x="32" y="160" width="1436" height="128" rx="16" fill="#eef3f8" stroke="#9db3c8" stroke-width="2"/>
+<text x="56" y="220" font-size="22" font-weight="700" fill="#24292f">You</text><text x="56" y="244" font-size="14" fill="#6a737d">decide, nothing else</text>
+<rect x="250" y="174" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8"/>
+<text x="264" y="202" font-size="16" font-weight="700" fill="#24292f">Write protocol.yaml</text>
+<text x="264" y="224" font-size="14" fill="#4f6272">question, criteria, searches</text>
+<rect x="489" y="174" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8"/>
+<text x="503" y="202" font-size="16" font-weight="700" fill="#24292f">Include / exclude / maybe</text>
+<text x="503" y="224" font-size="14" fill="#4f6272">on title and abstract</text>
+<rect x="728" y="174" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8"/>
+<text x="742" y="202" font-size="16" font-weight="700" fill="#24292f">Decide on the full text</text>
+<text x="742" y="224" font-size="14" fill="#4f6272">resolve conflicts</text>
+<rect x="967" y="174" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8"/>
+<text x="981" y="202" font-size="16" font-weight="700" fill="#24292f">Check the table</text>
+<text x="981" y="224" font-size="14" fill="#4f6272">fix flagged values</text>
+<rect x="1206" y="174" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8"/>
+<text x="1220" y="202" font-size="16" font-weight="700" fill="#24292f">Read the PRISMA flow</text>
+<text x="1220" y="224" font-size="14" fill="#4f6272">publish the export</text>
+<rect x="32" y="310" width="1436" height="128" rx="16" fill="#f5efe3" stroke="#c9bba3" stroke-width="2"/>
+<text x="56" y="370" font-size="22" font-weight="700" fill="#24292f">papersift</text><text x="56" y="394" font-size="14" fill="#6a737d">does the bookkeeping</text>
+<rect x="250" y="324" width="225" height="100" rx="12" fill="#fff" stroke="#8a5a2b" stroke-width="1.8"/>
+<text x="264" y="352" font-size="16" font-weight="700" fill="#24292f">Search 5 databases</text>
+<text x="264" y="374" font-size="14" fill="#4f6272">also RIS, BibTeX, CSV</text>
+<text x="264" y="394" font-size="14" fill="#4f6272">dedupe automatically</text>
+<rect x="489" y="324" width="225" height="100" rx="12" fill="#fff" stroke="#8a5a2b" stroke-width="1.8"/>
+<text x="503" y="352" font-size="16" font-weight="700" fill="#24292f">Likely includes first</text>
+<text x="503" y="374" font-size="14" fill="#4f6272">keyword highlights</text>
+<text x="503" y="394" font-size="14" fill="#4f6272">agreement (kappa)</text>
+<rect x="728" y="324" width="225" height="100" rx="12" fill="#fff" stroke="#8a5a2b" stroke-width="1.8"/>
+<text x="742" y="352" font-size="16" font-weight="700" fill="#24292f">Fetch open-access PDFs</text>
+<text x="742" y="374" font-size="14" fill="#4f6272">you add the rest</text>
+<rect x="967" y="324" width="225" height="100" rx="12" fill="#fff" stroke="#8a5a2b" stroke-width="1.8"/>
+<text x="981" y="352" font-size="16" font-weight="700" fill="#24292f">Extraction table</text>
+<text x="981" y="374" font-size="14" fill="#4f6272">one row per study</text>
+<rect x="1206" y="324" width="225" height="100" rx="12" fill="#fff" stroke="#8a5a2b" stroke-width="1.8"/>
+<text x="1220" y="352" font-size="16" font-weight="700" fill="#24292f">PRISMA flow diagram</text>
+<text x="1220" y="374" font-size="14" fill="#4f6272">CSV, RIS, BibTeX export</text>
+<rect x="32" y="460" width="1436" height="128" rx="16" fill="#fbf6e4" stroke="#d9b44a" stroke-width="2" stroke-dasharray="9 6"/>
+<text x="56" y="520" font-size="22" font-weight="700" fill="#24292f">Optional AI</text><text x="56" y="544" font-size="14" fill="#6a737d">any model, hosted or local</text>
+<rect x="250" y="474" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8" stroke-dasharray="9 6"/>
+<text x="264" y="502" font-size="16" font-weight="700" fill="#24292f">Draft and test queries</text>
+<text x="264" y="524" font-size="14" fill="#4f6272">before you run them</text>
+<rect x="489" y="474" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8" stroke-dasharray="9 6"/>
+<text x="503" y="502" font-size="16" font-weight="700" fill="#24292f">Extra reviewer</text>
+<text x="503" y="524" font-size="14" fill="#4f6272">votes marked as AI</text>
+<rect x="728" y="474" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8" stroke-dasharray="9 6"/>
+<text x="742" y="502" font-size="16" font-weight="700" fill="#24292f">Extra reviewer</text>
+<text x="742" y="524" font-size="14" fill="#4f6272">on the full text</text>
+<rect x="967" y="474" width="225" height="100" rx="12" fill="#fff" stroke="#4f6272" stroke-width="1.8" stroke-dasharray="9 6"/>
+<text x="981" y="502" font-size="16" font-weight="700" fill="#24292f">Pre-fill the table</text>
+<text x="981" y="524" font-size="14" fill="#4f6272">unchecked values flagged</text>
+<path d="M474,374 L490,374" stroke="#3b4652" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M713,374 L729,374" stroke="#3b4652" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M952,374 L968,374" stroke="#3b4652" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M1191,374 L1207,374" stroke="#3b4652" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M362,288 L362,322" stroke="#7d8790" stroke-width="2" marker-end="url(#a)"/>
+<path d="M362,462 L362,428" stroke="#d9b44a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M601,288 L601,322" stroke="#7d8790" stroke-width="2" marker-end="url(#a)"/>
+<path d="M601,462 L601,428" stroke="#d9b44a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M840,288 L840,322" stroke="#7d8790" stroke-width="2" marker-end="url(#a)"/>
+<path d="M840,462 L840,428" stroke="#d9b44a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M1079,288 L1079,322" stroke="#7d8790" stroke-width="2" marker-end="url(#a)"/>
+<path d="M1079,462 L1079,428" stroke="#d9b44a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M1318,288 L1318,322" stroke="#7d8790" stroke-width="2" marker-end="url(#a)"/>
+<rect x="32" y="618" width="1436" height="90" rx="16" fill="#eceff1" stroke="#b9c2c9" stroke-width="2"/>
+<text x="56" y="656" font-size="20" font-weight="700" font-family="SF Mono, Menlo, Consolas, monospace" fill="#24292f">papersift.db</text>
+<text x="56" y="684" font-size="15" fill="#4f6272">One SQLite file next to protocol.yaml. Every record, vote, reason and count lives here, so the flow diagram can always be rebuilt and checked.</text>
+<path d="M1130,616 L1130,590" stroke="none"/>
+</svg>
