@@ -6,11 +6,11 @@ Europe PMC, arXiv and Semantic Scholar, reads exports from other databases,
 removes duplicates, follows citations, walks you through title/abstract and
 full-text screening and data extraction, and writes the flow diagram.
 
-<p align="center"><img src="docs/overview.svg" alt="papersift: search, screen, full text, extract, PRISMA outputs" width="100%"></p>
+<p align="center"><img src="docs/overview.svg?v=2" alt="papersift: search, screen, full text, extract, PRISMA outputs" width="100%"></p>
 
 <p align="center"><img src="docs/animation.svg?v=2" alt="Records flowing from the sources through search, screening and full-text review into the included set" width="100%"></p>
 
-<p align="center"><img src="docs/how-it-works.svg" alt="How papersift runs a review: you decide, papersift keeps the records, optional AI helps" width="100%"></p>
+<p align="center"><img src="docs/how-it-works.svg?v=2" alt="How papersift runs a review: you decide, papersift keeps the records, optional AI helps" width="100%"></p>
 
 Everything works without AI. With a language model of your choice, hosted
 or local, an AI can draft and test your searches, act as an extra reviewer
