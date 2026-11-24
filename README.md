@@ -8,7 +8,7 @@ full-text screening and data extraction, and writes the flow diagram.
 
 <p align="center"><img src="docs/overview.svg" alt="papersift: search, screen, full text, extract, PRISMA outputs" width="100%"></p>
 
-<p align="center"><img src="docs/animation.svg" alt="Records flowing from the sources through search, screening and full-text review into the included set" width="100%"></p>
+<p align="center"><img src="docs/animation.svg?v=2" alt="Records flowing from the sources through search, screening and full-text review into the included set" width="100%"></p>
 
 <p align="center"><img src="docs/how-it-works.svg" alt="How papersift runs a review: you decide, papersift keeps the records, optional AI helps" width="100%"></p>
 
