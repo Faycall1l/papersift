@@ -1,3 +1,4 @@
+import io
 import json
 import urllib.error
 
@@ -111,7 +112,7 @@ def test_http_retries_then_raises(monkeypatch):
 
     def urlopen(request, timeout):
         calls.append(1)
-        raise urllib.error.HTTPError("http://x", 503, "busy", {}, None)
+        raise urllib.error.HTTPError("http://x", 503, "busy", {}, io.BytesIO(b"busy"))
     monkeypatch.setattr(http.urllib.request, "urlopen", urlopen)
     with pytest.raises(SourceError):
         http.get("http://x", tries=3)

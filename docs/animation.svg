@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 330" width="1200" height="330" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<style>
+.d{opacity:0}
+.ok{animation:ok 10s linear infinite}
+.s1{animation:s1 10s linear infinite}
+.s2{animation:s2 10s linear infinite}
+@keyframes ok{0%{transform:translateX(0);opacity:0;fill:#4f6272}4%{opacity:1}44%{fill:#4f6272}50%{fill:#8a5a2b}72%{fill:#8a5a2b}78%{fill:#2e7d32}94%{opacity:1;fill:#2e7d32}100%{transform:translateX(920px);opacity:0;fill:#2e7d32}}
+@keyframes s1{0%{transform:translate(0,0);opacity:0}4%{opacity:1}46%{transform:translate(460px,0);opacity:1}58%{transform:translate(460px,70px);opacity:0}100%{transform:translate(460px,70px);opacity:0}}
+@keyframes s2{0%{transform:translate(0,0);opacity:0}4%{opacity:1}72%{transform:translate(690px,0);opacity:1}84%{transform:translate(690px,70px);opacity:0}100%{transform:translate(690px,70px);opacity:0}}
+.pulse{animation:p 10s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:.55}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.d,.pulse{animation:none;opacity:1}}
+</style>
+<rect x="1" y="1" width="1198" height="328" rx="22" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+<rect x="30" y="30" width="190" height="64" rx="14" fill="#f5efe3" stroke="#c9bba3" stroke-width="2"/>
+<text x="125" y="58" font-size="19" font-weight="700" fill="#24292f" text-anchor="middle">Sources</text><text x="125" y="80" font-size="13" fill="#6a737d" text-anchor="middle">5 databases + files</text>
+<path d="M125,96 L125,250" stroke="#e3e7ea" stroke-width="2" stroke-dasharray="3 6"/>
+<rect x="260" y="30" width="190" height="64" rx="14" fill="#f5efe3" stroke="#c9bba3" stroke-width="2"/>
+<text x="355" y="58" font-size="19" font-weight="700" fill="#24292f" text-anchor="middle">Search</text><text x="355" y="80" font-size="13" fill="#6a737d" text-anchor="middle">merge, remove duplicates</text>
+<path d="M355,96 L355,250" stroke="#e3e7ea" stroke-width="2" stroke-dasharray="3 6"/>
+<rect x="490" y="30" width="190" height="64" rx="14" fill="#f5efe3" stroke="#c9bba3" stroke-width="2"/>
+<text x="585" y="58" font-size="19" font-weight="700" fill="#24292f" text-anchor="middle">Screen</text><text x="585" y="80" font-size="13" fill="#6a737d" text-anchor="middle">title and abstract</text>
+<path d="M585,96 L585,250" stroke="#e3e7ea" stroke-width="2" stroke-dasharray="3 6"/>
+<rect x="720" y="30" width="190" height="64" rx="14" fill="#f5efe3" stroke="#c9bba3" stroke-width="2"/>
+<text x="815" y="58" font-size="19" font-weight="700" fill="#24292f" text-anchor="middle">Full text</text><text x="815" y="80" font-size="13" fill="#6a737d" text-anchor="middle">read the PDF</text>
+<path d="M815,96 L815,250" stroke="#e3e7ea" stroke-width="2" stroke-dasharray="3 6"/>
+<rect x="950" y="30" width="190" height="64" rx="14" fill="#eaf5ec" stroke="#2e7d32" stroke-width="2"/>
+<text x="1045" y="58" font-size="19" font-weight="700" fill="#24292f" text-anchor="middle">Included</text><text x="1045" y="80" font-size="13" fill="#6a737d" text-anchor="middle">goes into the review</text>
+<path d="M1045,96 L1045,250" stroke="#e3e7ea" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="585" y="232" font-size="13" fill="#b42318" text-anchor="middle" class="pulse">not relevant</text>
+<text x="815" y="232" font-size="13" fill="#b42318" text-anchor="middle" class="pulse">excluded, with reason</text>
+<circle class="d s2" cx="125" cy="128" r="6" fill="#8a5a2b" style="animation-delay:-0.00s"/>
+<circle class="d s1" cx="125" cy="144" r="6" fill="#4f6272" style="animation-delay:-0.42s"/>
+<circle class="d s2" cx="125" cy="162" r="6" fill="#8a5a2b" style="animation-delay:-0.83s"/>
+<circle class="d s1" cx="125" cy="175" r="6" fill="#4f6272" style="animation-delay:-1.25s"/>
+<circle class="d s1" cx="125" cy="196" r="6" fill="#4f6272" style="animation-delay:-1.67s"/>
+<circle class="d ok" cx="125" cy="209" r="6" fill="#4f6272" style="animation-delay:-2.08s"/>
+<circle class="d s1" cx="125" cy="123" r="6" fill="#4f6272" style="animation-delay:-2.50s"/>
+<circle class="d ok" cx="125" cy="140" r="6" fill="#4f6272" style="animation-delay:-2.92s"/>
+<circle class="d s2" cx="125" cy="158" r="6" fill="#8a5a2b" style="animation-delay:-3.33s"/>
+<circle class="d s1" cx="125" cy="175" r="6" fill="#4f6272" style="animation-delay:-3.75s"/>
+<circle class="d s2" cx="125" cy="195" r="6" fill="#8a5a2b" style="animation-delay:-4.17s"/>
+<circle class="d s2" cx="125" cy="213" r="6" fill="#8a5a2b" style="animation-delay:-4.58s"/>
+<circle class="d s2" cx="125" cy="127" r="6" fill="#8a5a2b" style="animation-delay:-5.00s"/>
+<circle class="d ok" cx="125" cy="145" r="6" fill="#4f6272" style="animation-delay:-5.42s"/>
+<circle class="d ok" cx="125" cy="162" r="6" fill="#4f6272" style="animation-delay:-5.83s"/>
+<circle class="d ok" cx="125" cy="175" r="6" fill="#4f6272" style="animation-delay:-6.25s"/>
+<circle class="d s1" cx="125" cy="190" r="6" fill="#4f6272" style="animation-delay:-6.67s"/>
+<circle class="d ok" cx="125" cy="213" r="6" fill="#4f6272" style="animation-delay:-7.08s"/>
+<circle class="d ok" cx="125" cy="126" r="6" fill="#4f6272" style="animation-delay:-7.50s"/>
+<circle class="d s1" cx="125" cy="141" r="6" fill="#4f6272" style="animation-delay:-7.92s"/>
+<circle class="d s1" cx="125" cy="161" r="6" fill="#4f6272" style="animation-delay:-8.33s"/>
+<circle class="d ok" cx="125" cy="176" r="6" fill="#4f6272" style="animation-delay:-8.75s"/>
+<circle class="d s1" cx="125" cy="194" r="6" fill="#4f6272" style="animation-delay:-9.17s"/>
+<circle class="d ok" cx="125" cy="208" r="6" fill="#4f6272" style="animation-delay:-9.58s"/>
+<text x="600" y="296" font-size="15" fill="#4f6272" text-anchor="middle">Every record, vote and reason is saved in papersift.db, so the PRISMA counts always add up.</text>
+</svg>
